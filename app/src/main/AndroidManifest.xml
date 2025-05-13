@@ -1,0 +1,64 @@
+<?xml version="1.0" encoding="utf-8"?>
+<manifest xmlns:android="http://schemas.android.com/apk/res/android"
+    xmlns:tools="http://schemas.android.com/tools"
+    package="com.tefbanesco">
+
+    <application
+        android:allowBackup="true"
+        android:dataExtractionRules="@xml/data_extraction_rules"
+        android:fullBackupContent="@xml/backup_rules"
+        android:icon="@mipmap/ic_launcher"
+        android:label="@string/app_name"
+        android:roundIcon="@mipmap/ic_launcher_round"
+        android:supportsRtl="true"
+        android:theme="@style/Theme.Basic_module_hiopos"
+        tools:targetApi="31">
+
+        <!--
+            Activity Principal del Módulo de Pago:
+            Esta Activity será el punto de entrada para todas las acciones
+            enviadas por HioPosCloud.
+        -->
+        <activity
+            android:name=".PaymentActivity"
+            android:exported="true"
+            android:launchMode="singleTop">
+            <!--
+                Filtro para la acción INITIALIZE:
+                Esta acción es llamada por HioPosCloud al arrancar para que el módulo
+                pueda cargar su configuración remota.
+            -->
+            <intent-filter>
+                <action android:name="icg.actions.electronicpayment.tefbanesco.INITIALIZE" />
+                <category android:name="android.intent.category.DEFAULT" />
+            </intent-filter>
+
+            <!--
+                Filtro para la acción TRANSACTION:
+                Esta es la acción principal para realizar cualquier operación de cobro
+                (venta, abono, etc.).
+            -->
+            <intent-filter>
+                <action android:name="icg.actions.electronicpayment.tefbanesco.TRANSACTION" />
+                <category android:name="android.intent.category.DEFAULT" />
+            </intent-filter>
+
+            <!--
+                Filtro para la acción GET_BEHAVIOR:
+                HioPosCloud llama a esta acción para conocer las capacidades del módulo
+                ANTES de intentar cualquier otra operación como TRANSACTION.
+            -->
+            <intent-filter>
+                <action android:name="icg.actions.electronicpayment.tefbanesco.GET_BEHAVIOR" />
+                <category android:name="android.intent.category.DEFAULT" />
+            </intent-filter>
+
+            <!-- Filtro para lanzamiento manual (para pruebas) -->
+            <intent-filter>
+                <action android:name="android.intent.action.MAIN" />
+                <category android:name="android.intent.category.LAUNCHER" />
+            </intent-filter>
+        </activity>
+    </application>
+
+</manifest>
