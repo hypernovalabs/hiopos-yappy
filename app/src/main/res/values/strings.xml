@@ -3,12 +3,30 @@
     <string name="payment_title">Procesando pago</string>
     <string name="accept_payment">Aceptar Pago</string>
     <string name="cancel_payment">Cancelar Pago</string>
+    <string name="alternative_payment">Método de Pago Alternativo</string>
     <string name="payment_amount_format">Procesar pago: %1$s %2$s</string>
     <string name="error_missing_parameters">Parámetros de entrada incompletos.</string>
-    <string name="error_module_internal">Error Interno Módulo</string>
+    <string name="error_module_internal">Error Interno del Módulo de Pago</string>
     <string name="error_data_title">Error de Datos - Módulo TEF</string>
     <string name="error_parameter_missing">Parámetro requerido ausente: %1$s</string>
     <string name="error_parameters_missing">Parámetros de entrada incompletos o inválidos: %1$s</string>
     <string name="error_payment_canceled">Pago cancelado por el usuario desde el módulo TEFBanesco.</string>
     <string name="error_payment_canceled_title">Pago Cancelado</string>
+
+    <!-- Errores específicos de Yappy -->
+    <string name="error_yappy_api_title">Error en API de Yappy</string>
+    <string name="error_yappy_connection">No se pudo conectar con el servidor de Yappy. Verifique su conexión a internet.</string>
+    <string name="error_yappy_timeout">Tiempo de espera agotado al conectar con Yappy.</string>
+    <string name="error_yappy_session">Error al iniciar sesión con Yappy. Código: %1$s</string>
+    <string name="error_yappy_qr">Error al generar código QR. Código: %1$s</string>
+    <string name="error_yappy_transaction">Error al verificar estado de transacción. Código: %1$s</string>
+
+    <!-- Strings para QR -->
+    <string name="scan_qr_title">Escanea el código QR con Yappy</string>
+    <string name="scan_qr_instruction">Abre la app Yappy en tu teléfono y escanea este código para completar el pago</string>
+    <string name="qr_code_description">Código QR para pago</string>
+    <string name="qr_payment_processing">Esperando escaneado del QR. Abre Yappy en tu teléfono.</string>
+    <string name="qr_payment_completed">¡Pago completado!</string>
+    <string name="qr_payment_failed">Pago fallido</string>
+    <string name="qr_payment_timeout">Tiempo de espera agotado</string>
 </resources>

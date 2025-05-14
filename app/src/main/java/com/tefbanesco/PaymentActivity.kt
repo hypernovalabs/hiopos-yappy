@@ -1,3 +1,4 @@
+// src/main/java/com/tefbanesco/PaymentActivity.kt
 package com.tefbanesco
 
 import android.app.Activity
@@ -7,23 +8,24 @@ import android.util.Log
 import android.widget.Button
 import android.widget.TextView
 import androidx.appcompat.app.AppCompatActivity
+import androidx.lifecycle.lifecycleScope
+import kotlinx.coroutines.Job
+import kotlinx.coroutines.launch
+import kotlinx.coroutines.delay
+import kotlinx.coroutines.isActive
+import kotlinx.coroutines.CoroutineScope
 
-// Constantes para las acciones (para evitar errores de tipeo y mayor claridad)
+// Constantes para las acciones
 const val ACTION_PREFIX = "icg.actions.electronicpayment.tefbanesco."
 const val ACTION_INITIALIZE = ACTION_PREFIX + "INITIALIZE"
 const val ACTION_TRANSACTION = ACTION_PREFIX + "TRANSACTION"
 const val ACTION_GET_BEHAVIOR = ACTION_PREFIX + "GET_BEHAVIOR"
 
-// Constantes para los extras (claves) de los Intents según la documentación
+// Constantes para los extras de los Intents
 object ExtraKeys {
-    // Entrada INITIALIZE
-    const val PARAMETERS = "Parameters" // String (XML)
-    const val TOKEN = "Token" // String (UUID para auditoría)
-
-    // Salida INITIALIZE / Común para errores
-    const val ERROR_MESSAGE = "ErrorMessage" // String
-
-    // Salida GET_BEHAVIOR (Booleanos)
+    const val PARAMETERS = "Parameters"
+    const val TOKEN = "Token"
+    const val ERROR_MESSAGE = "ErrorMessage"
     const val SUPPORTS_TRANSACTION_VOID = "SupportsTransactionVoid"
     const val SUPPORTS_TRANSACTION_QUERY = "SupportsTransactionQuery"
     const val SUPPORTS_NEGATIVE_SALES = "SupportsNegativeSales"
@@ -36,47 +38,41 @@ object ExtraKeys {
     const val SUPPORTS_EBT_FOODSTAMP = "SupportsEBTFoodstamp"
     const val HAS_CUSTOM_PARAMS = "HasCustomParams"
     const val CAN_CHARGE_CARD = "CanChargeCard"
-    const val CAN_AUDIT = "canAudit" // Nótese la minúscula inicial, según documentación
+    const val CAN_AUDIT = "canAudit"
     const val EXECUTE_VOID_WHEN_AVAILABLE = "ExecuteVoidWhenAvailable"
     const val SAVE_LOYALTY_CARD_NUM = "SaveLoyaltyCardNum"
     const val CAN_PRINT = "CanPrint"
     const val READ_CARD_FROM_API = "ReadCardFromApi"
-    const val ONLY_USE_DOCUMENT_PATH = "OnlyUseDocumentPath" // Nuevo en API v3.7
+    const val ONLY_USE_DOCUMENT_PATH = "OnlyUseDocumentPath"
 
-    // Entrada TRANSACTION
-    const val TRANSACTION_TYPE = "TransactionType" // String (SALE, REFUND, etc.)
-    const val AMOUNT = "Amount" // String (entero, ej: "1234" para 12.34)
-    const val CURRENCY_ISO = "CurrencyISO" // String (ej: "EUR")
-    const val LANGUAGE_ISO = "LanguageISO" // String (ej: "es")
-    const val TRANSACTION_ID_HIO = "TransactionId" // String (ID de HioPos)
-    const val SHOP_DATA = "ShopData" // String (XML)
-    const val SELLER_DATA = "SellerData" // String (XML)
-    const val TAX_DETAIL = "TaxDetail" // String (XML)
-    const val RECEIPT_PRINTER_COLUMNS = "ReceiptPrinterColumns" // Int
-    const val DOCUMENT_DATA = "DocumentData" // String (XML del documento de venta)
-    const val DOCUMENT_PATH = "DocumentPath" // String (Ruta a fichero XML del doc. venta)
-    const val OVER_PAYMENT_TYPE = "OverPaymentType" // Int
+    const val TRANSACTION_TYPE = "TransactionType"
+    const val AMOUNT = "Amount"
+    const val CURRENCY_ISO = "CurrencyISO"
+    const val LANGUAGE_ISO = "LanguageISO"
+    const val TRANSACTION_ID_HIO = "TransactionId"
+    const val SHOP_DATA = "ShopData"
+    const val SELLER_DATA = "SellerData"
+    const val TAX_DETAIL = "TaxDetail"
+    const val RECEIPT_PRINTER_COLUMNS = "ReceiptPrinterColumns"
+    const val DOCUMENT_DATA = "DocumentData"
+    const val DOCUMENT_PATH = "DocumentPath"
+    const val OVER_PAYMENT_TYPE = "OverPaymentType"
 
-    // Salida TRANSACTION
-    const val TRANSACTION_RESULT = "TransactionResult" // String (ACCEPTED, FAILED, UNKNOWN_RESULT)
-    // TRANSACTION_TYPE (reutiliza la constante de entrada)
-    // AMOUNT (reutiliza la constante de entrada)
-    const val TRANSACTION_DATA_MODULE = "TransactionData" // String (datos del módulo, max 250 chars)
-    // SHOP_DATA (reutiliza constante de entrada, puede ser devuelto)
-    // SELLER_DATA (reutiliza constante de entrada, puede ser devuelto)
-    const val AUTHORIZATION_ID = "AuthorizationId" // String (varchar(40))
-    const val CARD_HOLDER = "CardHolder" // String (varchar(255))
-    const val CARD_TYPE = "CardType" // String (varchar(30))
-    const val CARD_NUM = "CardNum" // String (VarChar(100), ofuscado)
-    const val ERROR_MESSAGE_TITLE = "ErrorMessageTitle" // String
-    const val DOCUMENT_ID = "DocumentId" // String (nuevo en API v3.5 para salida)
+    const val TRANSACTION_RESULT = "TransactionResult"
+    const val TRANSACTION_DATA_MODULE = "TransactionData"
+    const val AUTHORIZATION_ID = "AuthorizationId"
+    const val CARD_HOLDER = "CardHolder"
+    const val CARD_TYPE = "CardType"
+    const val CARD_NUM = "CardNum"
+    const val ERROR_MESSAGE_TITLE = "ErrorMessageTitle"
+    const val DOCUMENT_ID = "DocumentId"
 }
 
 class PaymentActivity : AppCompatActivity() {
 
     private val TAG = "PaymentActivity"
 
-    // Variables para almacenar datos de la transacción actual
+    // Variables para la transacción actual
     private var currentTransactionIdHio: Int? = 0
     private var currentAmount: String? = null
     private var currentCurrencyIso: String? = null
@@ -95,524 +91,268 @@ class PaymentActivity : AppCompatActivity() {
     }
 
     private fun handleIntent(intent: Intent) {
-        // Loguear los extras del intent para todos los tipos de acciones
         logIntentExtras(intent.action, intent)
-
         when (intent.action) {
-            ACTION_INITIALIZE -> handleInitialize(intent)
+            ACTION_INITIALIZE   -> handleInitialize(intent)
             ACTION_GET_BEHAVIOR -> handleGetBehavior(intent)
-            ACTION_TRANSACTION -> handleTransaction(intent)
-            else -> respondUnsupported(intent)
+            ACTION_TRANSACTION  -> handleTransaction(intent)
+            else                -> respondUnsupported(intent)
         }
     }
 
-    /**
-     * Función auxiliar para loguear todos los extras del intent recibido
-     *
-     * @param action Acción del intent que se está procesando
-     * @param intent Intent recibido con todos sus extras
-     */
     private fun logIntentExtras(action: String?, intent: Intent) {
         Log.d(TAG, "╔═════════════════════════════════════════")
         Log.d(TAG, "║ RECIBIDO: $action")
         Log.d(TAG, "╠═════════════════════════════════════════")
 
-        if (intent.extras == null || intent.extras!!.isEmpty) {
+        // Aquí reemplazamos isNullOrEmpty() por comprobación explícita
+        val extras = intent.extras
+        if (extras == null || extras.isEmpty) {
             Log.d(TAG, "║ No hay extras en el intent")
             Log.d(TAG, "╚═════════════════════════════════════════")
             return
         }
 
-        // Iterar sobre todos los extras y loguerarlos
-        intent.extras!!.keySet().forEach { key ->
-            val value = intent.extras!!.get(key)
-
-            // Formatea valores largos (XML) para mejor legibilidad
-            when {
-                key.equals(ExtraKeys.SHOP_DATA, ignoreCase = true) ||
-                key.equals(ExtraKeys.SELLER_DATA, ignoreCase = true) ||
-                key.equals(ExtraKeys.TAX_DETAIL, ignoreCase = true) ||
-                key.equals(ExtraKeys.DOCUMENT_DATA, ignoreCase = true) -> {
-                    val xmlValue = value?.toString() ?: "null"
-                    if (xmlValue.length > 200) {
-                        // Para XML largos, muestra el inicio y el final
-                        Log.d(TAG, "║ $key: ${xmlValue.substring(0, 100)}...")
-                        Log.d(TAG, "║    ...${xmlValue.substring(xmlValue.length - 100)}")
-                        Log.d(TAG, "║    (Total: ${xmlValue.length} caracteres)")
-                    } else {
-                        Log.d(TAG, "║ $key: $xmlValue")
-                    }
-                }
-                else -> {
-                    Log.d(TAG, "║ $key: $value")
-                }
-            }
+        for (key in extras.keySet()) {
+            val value = extras.get(key)
+            Log.d(TAG, "║ $key: $value")
         }
         Log.d(TAG, "╚═════════════════════════════════════════")
     }
 
     private fun respondUnsupported(intent: Intent) {
-        Log.e(TAG, "Acción desconocida o no manejada: ${intent.action}")
-        // Devolver un error genérico si la acción no es reconocida
-        val resultIntent = Intent(intent.action) // Devolver la misma acción filtrada
-        resultIntent.putExtra(ExtraKeys.ERROR_MESSAGE, "Acción no soportada: ${intent.action}")
-        setResult(Activity.RESULT_CANCELED, resultIntent)
+        Log.e(TAG, "Acción no soportada: ${intent.action}")
+        val result = Intent(intent.action).apply {
+            putExtra(ExtraKeys.ERROR_MESSAGE, "Acción no soportada: ${intent.action}")
+        }
+        setResult(Activity.RESULT_CANCELED, result)
         finish()
     }
 
-    // --- Implementación de INITIALIZE ---
     private fun handleInitialize(intent: Intent) {
-        Log.d(TAG, "Manejando INITIALIZE")
-
-        // Validar parámetros de la inicialización
-        val missingParams = mutableListOf<String>()
-
-        // Verificar Parameters (XML)
-        val parametersXml = intent.getStringExtra(ExtraKeys.PARAMETERS)
-        if (parametersXml == null) {
-            missingParams.add("Parameters (XML)")
-            Log.w(TAG, "INITIALIZE: Parámetro Parameters (XML) no recibido")
-        } else if (parametersXml.isBlank()) {
-            Log.w(TAG, "INITIALIZE: Parámetro Parameters (XML) está vacío")
-        }
-
-        // Verificar Token (opcional pero recomendado para auditoría)
-        val token = intent.getStringExtra(ExtraKeys.TOKEN)
-        if (token == null) {
-            Log.w(TAG, "INITIALIZE: Parámetro Token no recibido (recomendado para auditoría)")
-        } else if (token.isBlank()) {
-            Log.w(TAG, "INITIALIZE: Parámetro Token está vacío")
+        val paramsXml = intent.getStringExtra(ExtraKeys.PARAMETERS)
+        if (paramsXml.isNullOrBlank()) {
+            val error = "Parameters (XML) no recibido"
+            setResult(Activity.RESULT_CANCELED, Intent(ACTION_INITIALIZE).apply {
+                putExtra(ExtraKeys.ERROR_MESSAGE, error)
+            })
         } else {
-            Log.i(TAG, "INITIALIZE: Token para auditoría recibido: $token")
+            setResult(Activity.RESULT_OK, Intent(ACTION_INITIALIZE))
         }
-
-        // Para INITIALIZE, el token no es obligatorio, por lo que sólo validamos Parameters
-        if (missingParams.isNotEmpty()) {
-            val errorMessage = "Parámetros de inicialización incompletos: ${missingParams.joinToString(", ")}."
-            Log.e(TAG, "INITIALIZE_ERROR: $errorMessage")
-
-            val resultIntent = Intent(ACTION_INITIALIZE)
-            resultIntent.putExtra(ExtraKeys.ERROR_MESSAGE, errorMessage)
-            setResult(Activity.RESULT_CANCELED, resultIntent)
-            finish()
-            return
-        }
-
-        // Simulación de parseo y guardado de parámetros
-        // En una app real, parsearías el XML y guardarías en SharedPreferences o DB.
-        try {
-            // Aquí se procesaría y guardaría la configuración
-            // En el prototipo, simplemente simulamos éxito
-            Log.i(TAG, "INITIALIZE: Procesando parámetros XML recibidos")
-            val success = true // Simular éxito
-
-            val resultIntent = Intent(ACTION_INITIALIZE) // Acción filtrada como respuesta
-            if (success) {
-                Log.i(TAG, "INITIALIZE exitoso")
-                setResult(Activity.RESULT_OK, resultIntent)
-            } else {
-                val errorMessage = "Error al guardar la configuración remota."
-                resultIntent.putExtra(ExtraKeys.ERROR_MESSAGE, errorMessage)
-                Log.e(TAG, "INITIALIZE fallido: $errorMessage")
-                setResult(Activity.RESULT_CANCELED, resultIntent)
-            }
-        } catch (e: Exception) {
-            // Si hay un error al procesar los parámetros
-            Log.e(TAG, "INITIALIZE: Error al procesar parámetros", e)
-            val resultIntent = Intent(ACTION_INITIALIZE)
-            resultIntent.putExtra(ExtraKeys.ERROR_MESSAGE, "Error al procesar la configuración: ${e.message}")
-            setResult(Activity.RESULT_CANCELED, resultIntent)
-        }
-
-        finish() // Finalizar la activity después de procesar INITIALIZE
+        finish()
     }
 
-    // --- Implementación de GET_BEHAVIOR ---
     private fun handleGetBehavior(intent: Intent) {
-        Log.d(TAG, "Manejando GET_BEHAVIOR")
-
-        try {
-            val resultIntent = Intent(ACTION_GET_BEHAVIOR) // Acción filtrada
-
-            // Configurar las capacidades del módulo según la API
-            // Para mejor depuración, log cada una de las capacidades con su valor
-            Log.i(TAG, "GET_BEHAVIOR: Configurando capacidades del módulo:")
-
-            // Capacidades relacionadas con tipo de transacciones
-            val supportsTransactionVoid = false
-            resultIntent.putExtra(ExtraKeys.SUPPORTS_TRANSACTION_VOID, supportsTransactionVoid)
-            Log.i(TAG, "- SupportsTransactionVoid: $supportsTransactionVoid")
-
-            val supportsTransactionQuery = false
-            resultIntent.putExtra(ExtraKeys.SUPPORTS_TRANSACTION_QUERY, supportsTransactionQuery)
-            Log.i(TAG, "- SupportsTransactionQuery: $supportsTransactionQuery")
-
-            val supportsNegativeSales = false
-            resultIntent.putExtra(ExtraKeys.SUPPORTS_NEGATIVE_SALES, supportsNegativeSales)
-            Log.i(TAG, "- SupportsNegativeSales: $supportsNegativeSales")
-
-            val supportsPartialRefund = false
-            resultIntent.putExtra(ExtraKeys.SUPPORTS_PARTIAL_REFUND, supportsPartialRefund)
-            Log.i(TAG, "- SupportsPartialRefund: $supportsPartialRefund")
-
-            val supportsBatchClose = false
-            resultIntent.putExtra(ExtraKeys.SUPPORTS_BATCH_CLOSE, supportsBatchClose)
-            Log.i(TAG, "- SupportsBatchClose: $supportsBatchClose")
-
-            // Capacidades relacionadas con propinas
-            val supportsTipAdjustment = false
-            resultIntent.putExtra(ExtraKeys.SUPPORTS_TIP_ADJUSTMENT, supportsTipAdjustment)
-            Log.i(TAG, "- SupportsTipAdjustment: $supportsTipAdjustment")
-
-            val onlyCreditForTipAdjustment = false
-            resultIntent.putExtra(ExtraKeys.ONLY_CREDIT_FOR_TIP_ADJUSTMENT, onlyCreditForTipAdjustment)
-            Log.i(TAG, "- OnlyCreditForTipAdjustment: $onlyCreditForTipAdjustment")
-
-            // Capacidades relacionadas con tipos de pago
-            val supportsCredit = true // Asumimos que el pago es tipo crédito
-            resultIntent.putExtra(ExtraKeys.SUPPORTS_CREDIT, supportsCredit)
-            Log.i(TAG, "- SupportsCredit: $supportsCredit")
-
-            val supportsDebit = false
-            resultIntent.putExtra(ExtraKeys.SUPPORTS_DEBIT, supportsDebit)
-            Log.i(TAG, "- SupportsDebit: $supportsDebit")
-
-            val supportsEbtFoodstamp = false
-            resultIntent.putExtra(ExtraKeys.SUPPORTS_EBT_FOODSTAMP, supportsEbtFoodstamp)
-            Log.i(TAG, "- SupportsEBTFoodstamp: $supportsEbtFoodstamp")
-
-            // Otras capacidades
-            val hasCustomParams = false // No hay logo/nombre personalizado
-            resultIntent.putExtra(ExtraKeys.HAS_CUSTOM_PARAMS, hasCustomParams)
-            Log.i(TAG, "- HasCustomParams: $hasCustomParams")
-
-            val canChargeCard = false // No usamos ReadCard/ChargeCard
-            resultIntent.putExtra(ExtraKeys.CAN_CHARGE_CARD, canChargeCard)
-            Log.i(TAG, "- CanChargeCard: $canChargeCard")
-
-            val canAudit = false // No implementamos auditoría activa
-            resultIntent.putExtra(ExtraKeys.CAN_AUDIT, canAudit)
-            Log.i(TAG, "- canAudit: $canAudit")
-
-            val executeVoidWhenAvailable = false
-            resultIntent.putExtra(ExtraKeys.EXECUTE_VOID_WHEN_AVAILABLE, executeVoidWhenAvailable)
-            Log.i(TAG, "- ExecuteVoidWhenAvailable: $executeVoidWhenAvailable")
-
-            val saveLoyaltyCardNum = false
-            resultIntent.putExtra(ExtraKeys.SAVE_LOYALTY_CARD_NUM, saveLoyaltyCardNum)
-            Log.i(TAG, "- SaveLoyaltyCardNum: $saveLoyaltyCardNum")
-
-            val canPrint = false // No imprimimos
-            resultIntent.putExtra(ExtraKeys.CAN_PRINT, canPrint)
-            Log.i(TAG, "- CanPrint: $canPrint")
-
-            val readCardFromApi = false
-            resultIntent.putExtra(ExtraKeys.READ_CARD_FROM_API, readCardFromApi)
-            Log.i(TAG, "- ReadCardFromApi: $readCardFromApi")
-
-            val onlyUseDocumentPath = false
-            resultIntent.putExtra(ExtraKeys.ONLY_USE_DOCUMENT_PATH, onlyUseDocumentPath)
-            Log.i(TAG, "- OnlyUseDocumentPath: $onlyUseDocumentPath")
-
-            Log.i(TAG, "GET_BEHAVIOR configurado y listo para devolver.")
-            setResult(Activity.RESULT_OK, resultIntent)
-        } catch (e: Exception) {
-            // Manejo de errores inesperados
-            Log.e(TAG, "Error al configurar GET_BEHAVIOR: ${e.message}", e)
-            val errorIntent = Intent(ACTION_GET_BEHAVIOR)
-            errorIntent.putExtra(ExtraKeys.ERROR_MESSAGE, "Error inesperado al procesar capacidades: ${e.message}")
-            setResult(Activity.RESULT_CANCELED, errorIntent)
+        val result = Intent(ACTION_GET_BEHAVIOR).apply {
+            putExtra(ExtraKeys.SUPPORTS_CREDIT, true)
+            putExtra(ExtraKeys.SUPPORTS_DEBIT, false)
+            putExtra(ExtraKeys.SUPPORTS_PARTIAL_REFUND, false)
+            putExtra(ExtraKeys.SUPPORTS_TIP_ADJUSTMENT, false)
+            putExtra(ExtraKeys.CAN_PRINT, false)
         }
-
-        finish() // Finalizar la activity después de procesar GET_BEHAVIOR
+        setResult(Activity.RESULT_OK, result)
+        finish()
     }
 
-    // --- Implementación de TRANSACTION ---
     private fun handleTransaction(intent: Intent) {
-        Log.d(TAG, "Manejando TRANSACTION")
+        currentTransactionType = intent.getStringExtra(ExtraKeys.TRANSACTION_TYPE)
+        currentAmount           = intent.getStringExtra(ExtraKeys.AMOUNT)
+        currentCurrencyIso      = intent.getStringExtra(ExtraKeys.CURRENCY_ISO)
+        currentTransactionIdHio = intent.getIntExtra(ExtraKeys.TRANSACTION_ID_HIO, 0)
 
-        // 1. Validar parámetros obligatorios antes de extraerlos
-        val missingParams = mutableListOf<String>()
-
-        // Validar TransactionType
-        val transactionTypeStr = intent.getStringExtra(ExtraKeys.TRANSACTION_TYPE)
-        if (transactionTypeStr == null || transactionTypeStr.isBlank()) {
-            missingParams.add("TransactionType")
-        }
-
-        // Validar Amount
-        val amountStr = intent.getStringExtra(ExtraKeys.AMOUNT)
-        if (amountStr == null || amountStr.isBlank()) {
-            missingParams.add("Amount")
-        } else {
-            try {
-                // Validar que Amount sea un número entero válido
-                amountStr.trim().toInt()
-            } catch (e: NumberFormatException) {
-                missingParams.add("Amount (formato inválido, debe ser un número entero)")
-            }
-        }
-
-        // Validar TransactionId HIO
-        val transactionIdHioStr = intent.getIntExtra(ExtraKeys.TRANSACTION_ID_HIO,0)
-        println("TransactionIdHioStr: $transactionIdHioStr")
-        if (transactionIdHioStr == 0) {
-            missingParams.add("TransactionId (HioPos)")
-        }
-
-        // Validar CurrencyISO (También es importante para la transacción)
-        val currencyIsoStr = intent.getStringExtra(ExtraKeys.CURRENCY_ISO)
-        if (currencyIsoStr == null || currencyIsoStr.isBlank()) {
-            missingParams.add("CurrencyISO")
-        }
-
-        // Si hay parámetros faltantes, responder con error específico
-        if (missingParams.isNotEmpty()) {
-            val errorMessage = "Parámetros de entrada incompletos o inválidos: ${missingParams.joinToString(", ")}."
-            Log.e(TAG, "TRANSACTION_ERROR: $errorMessage")
-
-            val errorResult = Intent(ACTION_TRANSACTION)
-            errorResult.putExtra(ExtraKeys.TRANSACTION_RESULT, "FAILED")
-            errorResult.putExtra(ExtraKeys.ERROR_MESSAGE, errorMessage)
-            errorResult.putExtra(ExtraKeys.ERROR_MESSAGE_TITLE, "Error de Datos - Módulo TEF")
-
-            setResult(Activity.RESULT_OK, errorResult) // RESULT_OK porque el módulo responde, aunque la transacción falle
+        // Validación de campos obligatorios
+        if (currentTransactionType.isNullOrBlank()
+            || currentAmount.isNullOrBlank()
+            || currentCurrencyIso.isNullOrBlank()
+            || currentTransactionIdHio == 0
+        ) {
+            setResult(Activity.RESULT_OK, Intent(ACTION_TRANSACTION).apply {
+                putExtra(ExtraKeys.TRANSACTION_RESULT, "FAILED")
+                putExtra(ExtraKeys.ERROR_MESSAGE, "Parámetros incompletos")
+                putExtra(ExtraKeys.ERROR_MESSAGE_TITLE, "Error Datos")
+            })
             finish()
             return
         }
 
-        // 2. Si la validación es exitosa, extraer los parámetros
-        currentTransactionType = transactionTypeStr
-        currentAmount = amountStr
-        currentCurrencyIso = currencyIsoStr
-        currentTransactionIdHio = transactionIdHioStr
-
-        // Extraer parámetros adicionales no críticos
-        val languageIso = intent.getStringExtra(ExtraKeys.LANGUAGE_ISO)
-        val shopDataXml = intent.getStringExtra(ExtraKeys.SHOP_DATA)
-        val sellerDataXml = intent.getStringExtra(ExtraKeys.SELLER_DATA)
-        val taxDetailXml = intent.getStringExtra(ExtraKeys.TAX_DETAIL)
-        val printerCols = intent.getIntExtra(ExtraKeys.RECEIPT_PRINTER_COLUMNS, 42)
-        val documentDataXml = intent.getStringExtra(ExtraKeys.DOCUMENT_DATA) // XML de la venta
-        val documentPath = intent.getStringExtra(ExtraKeys.DOCUMENT_PATH) // Ruta al XML de la venta
-        val overPaymentType = intent.getIntExtra(ExtraKeys.OVER_PAYMENT_TYPE, -1)
-
-        // Registrar detalles específicos de los parámetros más importantes
-        Log.i(TAG, "Datos principales de la transacción validados correctamente:")
-        Log.i(TAG, "- TransactionType: $currentTransactionType")
-        Log.i(TAG, "- Amount: $currentAmount")
-        Log.i(TAG, "- CurrencyISO: $currentCurrencyIso")
-        Log.i(TAG, "- TransactionId: $currentTransactionIdHio")
-
-        // 2. Mostrar UI con botones
         setContentView(R.layout.activity_payment_ui)
+        findViewById<TextView>(R.id.tvAmountInfo).text =
+            "${formatAmount(currentAmount!!)} ${currentCurrencyIso}"
 
-        val tvAmount = findViewById<TextView>(R.id.tvAmountInfo)
-        val btnAccept = findViewById<Button>(R.id.btnAcceptPayment)
-        val btnCancel = findViewById<Button>(R.id.btnCancelPayment)
-
-        // Formatear el monto para mostrar en la UI - convertir de "1234" a "12.34"
-        val formattedAmount = formatAmount(currentAmount!!)
-        tvAmount.text = getString(R.string.payment_amount_format, formattedAmount, currentCurrencyIso)
-
-        btnAccept.setOnClickListener {
-            Log.i(TAG, "Pago ACEPTADO por el usuario.")
-            sendTransactionResponse(true, shopDataXml, sellerDataXml)
+        findViewById<Button>(R.id.btnAcceptPayment).setOnClickListener {
+            sendTransactionResponse(true, intent)
         }
-
-        btnCancel.setOnClickListener {
-            Log.i(TAG, "Pago CANCELADO por el usuario.")
-            sendTransactionResponse(false, shopDataXml, sellerDataXml)
+        findViewById<Button>(R.id.btnCancelPayment).setOnClickListener {
+            sendTransactionResponse(false, intent)
+        }
+        findViewById<Button>(R.id.btnAlternativePayment).setOnClickListener {
+            startAlternativePayment(intent)
         }
     }
-    
-    /**
-     * Formatea un monto de "1234" a "12.34" para mostrar en la UI
-     *
-     * @param amountStr Monto en formato string "1234" (12.34)
-     * @return Monto formateado "12.34"
-     */
+
+    private fun sendTransactionResponse(accepted: Boolean, intent: Intent) {
+        val result = Intent(ACTION_TRANSACTION).apply {
+            putExtra(ExtraKeys.TRANSACTION_TYPE, currentTransactionType)
+            putExtra(ExtraKeys.AMOUNT, currentAmount)
+            putExtra(ExtraKeys.TRANSACTION_RESULT, if (accepted) "ACCEPTED" else "FAILED")
+            if (!accepted) {
+                putExtra(ExtraKeys.ERROR_MESSAGE, getString(R.string.error_payment_canceled))
+                putExtra(ExtraKeys.ERROR_MESSAGE_TITLE, getString(R.string.error_payment_canceled_title))
+            } else {
+                putExtra(ExtraKeys.AUTHORIZATION_ID, "AUTH_${System.currentTimeMillis() % 100000}")
+                putExtra(ExtraKeys.CARD_HOLDER, "CLIENTE YAPPY")
+                putExtra(ExtraKeys.CARD_TYPE, "VISA")
+                putExtra(ExtraKeys.CARD_NUM, "**** **** **** 1234")
+            }
+        }
+        setResult(Activity.RESULT_OK, result)
+        finish()
+    }
+
     private fun formatAmount(amountStr: String): String {
-        try {
-            // Eliminar espacios y verificar si es un número válido
-            val trimmedAmount = amountStr.trim()
-            if (trimmedAmount.isEmpty()) {
-                Log.e(TAG, "Monto vacío")
-                return "0.00"
-            }
-            
-            // Verificar si hay signo negativo
-            val isNegative = trimmedAmount.startsWith("-")
-            val amountToProcess = if (isNegative) trimmedAmount.substring(1) else trimmedAmount
-            
-            // Convertir a entero
-            val amount = amountToProcess.toInt()
-            
-            // Formatear según sea menor o mayor que 100
-            val formatted = if (amount < 100) {
-                String.format("0.%02d", amount)
-            } else {
-                String.format("%d.%02d", amount / 100, amount % 100)
-            }
-            
-            // Agregar signo negativo si corresponde
-            return if (isNegative) "-$formatted" else formatted
-            
-        } catch (e: NumberFormatException) {
-            Log.e(TAG, "Error al formatear monto: $amountStr", e)
-            return amountStr // Devolver el original si hay error
-        } catch (e: Exception) {
-            Log.e(TAG, "Error inesperado al formatear monto: $amountStr", e)
-            return "0.00" // Valor por defecto ante errores inesperados
-        }
+        return amountStr.toIntOrNull()?.let { cents ->
+            String.format("%d.%02d", cents / 100, cents % 100)
+        } ?: "0.00"
     }
 
-//    private fun sendTransactionResponse(accepted: Boolean, shopDataXml: String?, sellerDataXml: String?) {
-//        val resultIntent = Intent(ACTION_TRANSACTION) // Acción filtrada
-//
-//        // Parámetros de salida comunes
-//        resultIntent.putExtra(ExtraKeys.TRANSACTION_TYPE, currentTransactionType) // El mismo que entró
-//        resultIntent.putExtra(ExtraKeys.AMOUNT, currentAmount) // El mismo que entró
-//
-//        // TransactionData: Campo definido por el integrador (módulo), max 250 chars.
-//        val moduleTransactionId = "TEFBANESCO_MOD_ID_${System.currentTimeMillis()}"
-//        val transactionDataModule = """
-//            {
-//                "module_id": "$moduleTransactionId",
-//                "hio_id": "$currentTransactionIdHio",
-//                "status": "${if (accepted) "ACCEPTED" else "FAILED"}",
-//                "timestamp": "${System.currentTimeMillis()}"
-//            }
-//        """.trimIndent().replace("\n", "")
-//        resultIntent.putExtra(ExtraKeys.TRANSACTION_DATA_MODULE, transactionDataModule)
-//
-//        // ShopData y SellerData: Pueden devolverse los mismos que entraron o modificados.
-//        try {
-//            // Devolver ShopData si existe
-//            shopDataXml?.let {
-//                // Aquí podríamos realizar modificaciones al XML si fuera necesario
-//                resultIntent.putExtra(ExtraKeys.SHOP_DATA, it)
-//                Log.d(TAG, "ShopData incluido en la respuesta")
-//            }
-//
-//            // Devolver SellerData si existe
-//            sellerDataXml?.let {
-//                // Aquí podríamos realizar modificaciones al XML si fuera necesario
-//                resultIntent.putExtra(ExtraKeys.SELLER_DATA, it)
-//                Log.d(TAG, "SellerData incluido en la respuesta")
-//            }
-//        } catch (e: Exception) {
-//            Log.e(TAG, "Error al procesar datos XML para la respuesta", e)
-//            // No incluir los datos XML en caso de error al procesarlos
-//        }
-//
-//        if (accepted) {
-//            resultIntent.putExtra(ExtraKeys.TRANSACTION_RESULT, "ACCEPTED")
-//            // Simular datos de tarjeta para una transacción aceptada
-//            resultIntent.putExtra(ExtraKeys.AUTHORIZATION_ID, "AUTH_TEF_${System.currentTimeMillis() % 100000}")
-//            resultIntent.putExtra(ExtraKeys.CARD_HOLDER, "CLIENTE BANESCO")
-//            resultIntent.putExtra(ExtraKeys.CARD_TYPE, "VISA") // O MasterCard, etc.
-//            resultIntent.putExtra(ExtraKeys.CARD_NUM, "**** **** **** 1234") // Número ofuscado
-//            Log.i(TAG, "Enviando respuesta TRANSACTION: ACCEPTED")
-//        } else {
-//            resultIntent.putExtra(ExtraKeys.TRANSACTION_RESULT, "FAILED")
-//            resultIntent.putExtra(ExtraKeys.ERROR_MESSAGE, getString(R.string.error_payment_canceled))
-//            resultIntent.putExtra(ExtraKeys.ERROR_MESSAGE_TITLE, getString(R.string.error_payment_canceled_title))
-//            Log.i(TAG, "Enviando respuesta TRANSACTION: FAILED")
-//        }
-//
-//        // IMPORTANTE: HioPosCloud espera RESULT_OK incluso si la transacción (TransactionResult) es FAILED.
-//        setResult(Activity.RESULT_OK, resultIntent)
-//        finish() // Finalizar la activity de UI para volver a HioPosCloud
-//    }
-    // Dentro de PaymentActivity.kt
+    private var qrDialog: QrCodeDialog? = null
+    private var alternativePaymentJob: Job? = null
+    private var statusUpdateJob: Job? = null
+    private var paymentStartTime = 0L
 
-    private fun sendTransactionResponse(accepted: Boolean, shopDataXml: String?, sellerDataXml: String?) {
-        val resultIntent = Intent(ACTION_TRANSACTION) // Acción filtrada
+    /**
+     * Inicia el proceso de pago alternativo con Yappy
+     */
+    private fun startAlternativePayment(intent: Intent) {
+        // Cancelar cualquier trabajo pendiente
+        alternativePaymentJob?.cancel()
+        statusUpdateJob?.cancel()
+        paymentStartTime = 0L
 
-        // Parámetros de salida comunes
-        resultIntent.putExtra(ExtraKeys.TRANSACTION_TYPE, currentTransactionType) // El mismo que entró
-        resultIntent.putExtra(ExtraKeys.AMOUNT, currentAmount) // El mismo que entró
+        // Iniciar el procesamiento en el hilo de background
+        alternativePaymentJob = lifecycleScope.launch {
+            // Crear instancia para conectar con API real de Yappy
+            val alternativePayment = AlternativePayment(
+                useMock = false  // Usar API real de Yappy
+            )
 
-        // TransactionData: Campo definido por el integrador (módulo), max 250 chars.
-        val moduleTransactionId = "TEFBANESCO_MOD_ID_${System.currentTimeMillis()}"
-        val transactionDataModule = """
-        {
-            "module_id": "$moduleTransactionId",
-            "hio_id": "$currentTransactionIdHio",
-            "status": "${if (accepted) "ACCEPTED" else "FAILED"}",
-            "timestamp": "${System.currentTimeMillis()}"
-        }
-    """.trimIndent().replace("\n", "")
-        resultIntent.putExtra(ExtraKeys.TRANSACTION_DATA_MODULE, transactionDataModule)
+            Log.d(TAG, "Iniciando proceso de pago alternativo con monto ${currentAmount ?: "0"} ${currentCurrencyIso ?: "PAB"}")
 
-        // ShopData y SellerData: Pueden devolverse los mismos que entraron o modificados.
-        try {
-            // Devolver ShopData si existe
-            shopDataXml?.let {
-                // Aquí podríamos realizar modificaciones al XML si fuera necesario
-                resultIntent.putExtra(ExtraKeys.SHOP_DATA, it)
-                Log.d(TAG, "ShopData incluido en la respuesta")
-            }
+            // Configurar callbacks
+            alternativePayment.setPaymentCallbacks(object : AlternativePayment.PaymentCallbacks {
+                override fun onQrGenerated(hash: String, amount: String) {
+                    Log.d(TAG, "QR generado con hash: ${hash.take(10)}... y monto: $amount")
 
-            // Devolver SellerData si existe
-            sellerDataXml?.let {
-                // Aquí podríamos realizar modificaciones al XML si fuera necesario
-                resultIntent.putExtra(ExtraKeys.SELLER_DATA, it)
-                Log.d(TAG, "SellerData incluido en la respuesta")
-            }
-        } catch (e: Exception) {
-            Log.e(TAG, "Error al procesar datos XML para la respuesta", e)
-            // No incluir los datos XML en caso de error al procesarlos
-        }
+                    // Verificar si es un mensaje de error (formato especial: ERROR:mensaje)
+                    if (hash.startsWith("ERROR:")) {
+                        val errorMessage = hash.substringAfter("ERROR:")
+                        Log.e(TAG, "Error en la generación de QR: $errorMessage")
 
-        if (accepted) {
-            resultIntent.putExtra(ExtraKeys.TRANSACTION_RESULT, "ACCEPTED")
-            // Simular datos de tarjeta para una transacción aceptada
-            resultIntent.putExtra(ExtraKeys.AUTHORIZATION_ID, "AUTH_TEF_${System.currentTimeMillis() % 100000}")
-            resultIntent.putExtra(ExtraKeys.CARD_HOLDER, "CLIENTE BANESCO")
-            resultIntent.putExtra(ExtraKeys.CARD_TYPE, "VISA") // O MasterCard, etc.
-            resultIntent.putExtra(ExtraKeys.CARD_NUM, "**** **** **** 1234") // Número ofuscado
-            Log.i(TAG, "Enviando respuesta TRANSACTION: ACCEPTED")
-        } else {
-            resultIntent.putExtra(ExtraKeys.TRANSACTION_RESULT, "FAILED")
-            // Asegúrate de tener estas strings definidas en tu archivo strings.xml
-            // o reemplázalas con los strings literales como estaban antes si prefieres.
-            resultIntent.putExtra(ExtraKeys.ERROR_MESSAGE, getString(R.string.error_payment_canceled))
-            resultIntent.putExtra(ExtraKeys.ERROR_MESSAGE_TITLE, getString(R.string.error_payment_canceled_title))
-            Log.i(TAG, "Enviando respuesta TRANSACTION: FAILED")
-        }
+                        // Crear un diálogo de error en lugar del QR
+                        androidx.appcompat.app.AlertDialog.Builder(this@PaymentActivity)
+                            .setTitle("Error de Comunicación")
+                            .setMessage("No se pudo iniciar el pago con Yappy:\n\n$errorMessage")
+                            .setPositiveButton("Aceptar") { _, _ ->
+                                sendTransactionResponse(false, intent)
+                            }
+                            .setCancelable(false)
+                            .show()
 
-        // --- INICIO: Bloque de Logging del Intent de Salida ---
-        val responseLogTag = "RESPONSE_TO_HIOPOS" // Un tag específico para estos logs
-        Log.i(responseLogTag, "--------------------------------------------------------------------------")
-        Log.i(responseLogTag, "Enviando respuesta a HioPosCloud. Acción: ${resultIntent.action}")
-        Log.i(responseLogTag, "--------------------------------------------------------------------------")
-        resultIntent.extras?.let { bundle ->
-            if (bundle.isEmpty) {
-                Log.i(responseLogTag, "El Bundle de extras está vacío.")
-            } else {
-                Log.i(responseLogTag, "Contenido de los Extras del Intent de Salida:")
-                for (key in bundle.keySet()) {
-                    val value = bundle.get(key)
-                    val valueString = value?.toString() ?: "null"
+                        return
+                    }
 
-                    // Para XMLs o JSONs largos, podríamos querer un tratamiento especial,
-                    // pero por ahora imprimimos todo. Logcat puede truncar líneas muy largas.
-                    if (valueString.length > 300 && (key == ExtraKeys.SHOP_DATA || key == ExtraKeys.SELLER_DATA || key == ExtraKeys.DOCUMENT_DATA || key == ExtraKeys.TRANSACTION_DATA_MODULE)) {
-                        Log.d(responseLogTag, "  Key: '$key' (XML/JSON largo, mostrando inicio y fin):")
-                        Log.d(responseLogTag, "    ${valueString.take(150)} ... ${valueString.takeLast(150)}")
-                    } else {
-                        Log.d(responseLogTag, "  Key: '$key', Value: '$valueString'")
+                    // Mostrar el diálogo QR cuando esté listo (flujo normal)
+                    qrDialog = QrCodeDialog.newInstance(hash, amount)
+                    qrDialog?.setOnCancelListener {
+                        // Si el usuario cancela, intentamos cancelar el trabajo
+                        Log.d(TAG, "Usuario canceló el pago con QR")
+                        alternativePaymentJob?.cancel()
+                        sendTransactionResponse(false, intent)
+                    }
+                    qrDialog?.show(supportFragmentManager, "QRDialog")
+                }
+
+                override fun onTransactionStatusChanged(status: String) {
+                    // Si es la primera vez, iniciamos el contador de tiempo
+                    if (status == AlternativePayment.STATUS_PENDING && paymentStartTime == 0L) {
+                        paymentStartTime = System.currentTimeMillis()
+
+                        // Iniciar un job que actualice el mensaje de estado cada segundo
+                        // para mostrar cuánto tiempo lleva esperando el escaneo
+                        statusUpdateJob = lifecycleScope.launch {
+                            while (isActive) {
+                                val elapsedSeconds = (System.currentTimeMillis() - paymentStartTime) / 1000
+                                val message = "${getString(R.string.qr_payment_processing)}\n" +
+                                             "Tiempo transcurrido: ${elapsedSeconds}s"
+                                qrDialog?.updateStatus(message)
+                                delay(1000) // Actualizar cada segundo
+                            }
+                        }
+                    }
+
+                    // Cancelar el job de actualización si ya no estamos en estado pendiente
+                    if (status != AlternativePayment.STATUS_PENDING) {
+                        statusUpdateJob?.cancel()
+                    }
+
+                    // Actualizar la UI según el estado de la transacción
+                    val statusMessage = when (status) {
+                        AlternativePayment.STATUS_COMPLETED -> getString(R.string.qr_payment_completed)
+                        AlternativePayment.STATUS_FAILED -> getString(R.string.qr_payment_failed)
+                        AlternativePayment.STATUS_TIMEOUT -> getString(R.string.qr_payment_timeout)
+                        AlternativePayment.STATUS_ERROR -> getString(R.string.error_module_internal)
+                        AlternativePayment.STATUS_CANCELED -> getString(R.string.error_payment_canceled)
+                        else -> getString(R.string.qr_payment_processing)
+                    }
+
+                    Log.d(TAG, "Estado de transacción cambiado a: $status ($statusMessage)")
+
+                    // Actualizar mensaje en el diálogo para todos los estados
+                    qrDialog?.updateStatus(statusMessage)
+
+                    // Solo cerramos el diálogo automáticamente si la transacción se completó correctamente
+                    // o falló definitivamente. Los estados intermedios se mantienen.
+                    when (status) {
+                        AlternativePayment.STATUS_COMPLETED -> {
+                            // Si el pago se completó con éxito, mostrar mensaje y cerrar después de 3 segundos
+                            lifecycleScope.launch {
+                                delay(3000)
+                                qrDialog?.dismiss()
+                            }
+                        }
+                        AlternativePayment.STATUS_FAILED,
+                        AlternativePayment.STATUS_ERROR,
+                        AlternativePayment.STATUS_TIMEOUT -> {
+                            // Si hubo un error o fallo, mantener visible por más tiempo para que
+                            // el usuario vea el mensaje de error pero eventualmente cerrar
+                            lifecycleScope.launch {
+                                delay(5000) // 5 segundos para leer el mensaje de error
+                                qrDialog?.dismiss()
+                            }
+                        }
+                        // En estado PENDING no cerramos el diálogo, esperamos a que el usuario
+                        // complete el pago o cancele manualmente
                     }
                 }
-            }
-        } ?: Log.i(responseLogTag, "El Intent de salida no tiene extras (bundle es null).")
-        Log.i(responseLogTag, "--------------------------------------------------------------------------")
-        // --- FIN: Bloque de Logging del Intent de Salida ---
 
-        // IMPORTANTE: HioPosCloud espera RESULT_OK incluso si la transacción (TransactionResult) es FAILED.
-        setResult(Activity.RESULT_OK, resultIntent)
-        finish() // Finalizar la activity de UI para volver a HioPosCloud
+                override fun onPaymentComplete(success: Boolean) {
+                    // Notificar el resultado a HioPos y terminar
+                    Log.d(TAG, "Pago completado con resultado: ${if (success) "EXITOSO" else "FALLIDO"}")
+                    sendTransactionResponse(success, intent)
+                }
+            })
+
+            // Iniciar el proceso de pago
+            try {
+                // El resultado lo procesaremos a través de los callbacks
+                Log.d(TAG, "Iniciando flujo completo de pago")
+                alternativePayment.procesarPagoCompleto(currentAmount ?: "0")
+            } catch (e: Exception) {
+                // En caso de error, asegurar que cerramos el diálogo y notificamos fallo
+                Log.e(TAG, "Error en pago alternativo", e)
+                qrDialog?.dismiss()
+                sendTransactionResponse(false, intent)
+            }
+        }
     }
 }

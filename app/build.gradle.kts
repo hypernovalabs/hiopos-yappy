@@ -36,11 +36,24 @@ android {
 }
 
 dependencies {
-
+    // Dependencias de Android
     implementation(libs.androidx.core.ktx)
     implementation(libs.androidx.appcompat)
     implementation(libs.material)
     testImplementation(libs.junit)
     androidTestImplementation(libs.androidx.junit)
     androidTestImplementation(libs.androidx.espresso.core)
+
+    // Reemplazamos las dependencias del catálogo que están causando problemas
+    // por dependencias directas
+    
+    // Coroutines para manejo asíncrono
+    implementation("org.jetbrains.kotlinx:kotlinx-coroutines-core:1.6.4")
+    implementation("org.jetbrains.kotlinx:kotlinx-coroutines-android:1.6.4")
+
+    // Para trabajar con JSON en Android sin GSON
+    implementation("org.json:json:20230618")
+
+    // Para generar y mostrar códigos QR
+    implementation("com.google.zxing:core:3.5.2")
 }

@@ -24,6 +24,14 @@
         android:layout_marginBottom="16dp"/>
 
     <Button
+        android:id="@+id/btnAlternativePayment"
+        android:layout_width="match_parent"
+        android:layout_height="wrap_content"
+        android:text="@string/alternative_payment"
+        android:backgroundTint="#4CAF50"
+        android:layout_marginBottom="16dp"/>
+
+    <Button
         android:id="@+id/btnCancelPayment"
         android:layout_width="match_parent"
         android:layout_height="wrap_content"
