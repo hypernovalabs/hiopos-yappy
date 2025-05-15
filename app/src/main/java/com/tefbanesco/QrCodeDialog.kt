@@ -47,7 +47,19 @@ class QrCodeDialog : DialogFragment() {
             qrHash = it.getString(ARG_QR_HASH)
             amount = it.getString(ARG_AMOUNT)
         }
-        setStyle(STYLE_NORMAL, android.R.style.Theme_Material_Light_Dialog_MinWidth)
+        // Usar un tema de pantalla completa sin barra de acción
+        setStyle(STYLE_NORMAL, android.R.style.Theme_Material_Light_NoActionBar_Fullscreen)
+    }
+
+    override fun onStart() {
+        super.onStart()
+        dialog?.let { dialog ->
+            // Configurar el diálogo para ocupar toda la pantalla
+            dialog.window?.apply {
+                setLayout(ViewGroup.LayoutParams.MATCH_PARENT, ViewGroup.LayoutParams.MATCH_PARENT)
+                setBackgroundDrawableResource(android.R.color.white) // Fondo blanco
+            }
+        }
     }
 
     override fun onCreateView(
@@ -66,9 +78,9 @@ class QrCodeDialog : DialogFragment() {
         val btnCancel = view.findViewById<Button>(R.id.btnCancelQr)
         statusTextView = view.findViewById<TextView>(R.id.tvQrStatus)
 
-        // Mostrar el monto formateado
+        // Mostrar el monto formateado con símbolo de dólar
         val formattedAmount = formatAmount(amount ?: "0")
-        tvAmount.text = getString(R.string.payment_amount_format).format(formattedAmount, "PAB")
+        tvAmount.text = getString(R.string.payment_amount_display_usd).format(formattedAmount)
 
         // Establecer texto de estado inicial
         statusTextView?.text = getString(R.string.qr_payment_processing)

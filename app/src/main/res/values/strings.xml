@@ -26,6 +26,9 @@
     <string name="scan_qr_instruction">Abre la app Yappy en tu teléfono y escanea este código para completar el pago</string>
     <string name="qr_code_description">Código QR para pago</string>
     <string name="qr_payment_processing">Esperando escaneado del QR. Abre Yappy en tu teléfono.</string>
+    <string name="qr_payment_countdown_format">Tiempo restante: %1$d segundos</string>
+    <string name="qr_payment_countdown_format_mm_ss">Tiempo restante: %1$s</string>
+    <string name="payment_amount_display_usd">Procesar pago: $%1$s</string>
     <string name="qr_payment_completed">¡Pago completado!</string>
     <string name="qr_payment_failed">Pago fallido</string>
     <string name="qr_payment_timeout">Tiempo de espera agotado</string>

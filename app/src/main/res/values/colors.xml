@@ -7,4 +7,15 @@
     <color name="teal_700">#FF018786</color>
     <color name="black">#FF000000</color>
     <color name="white">#FFFFFFFF</color>
+
+    <!-- Yappy brand colors -->
+    <color name="yappy_red_coral">#FF5252</color>
+    <color name="yappy_red_vivid">#F44336</color>
+    <color name="yappy_cancel_button_red">#FF0000</color>
+    <color name="yappy_screen_background_blue">#1DA1F2</color>
+    <color name="yappy_text_dark_gray">#424242</color>
+    <color name="yappy_text_medium_gray">#757575</color>
+    <color name="yappy_green">#4CAF50</color>
+    <color name="yappy_deco_blue">#00BFFF</color>
+    <color name="yappy_deco_orange">#FFA500</color>
 </resources>

@@ -166,28 +166,22 @@ class PaymentActivity : AppCompatActivity() {
             || currentCurrencyIso.isNullOrBlank()
             || currentTransactionIdHio == 0
         ) {
+            Log.e(TAG, "Parámetros incompletos para la transacción. " +
+                    "Type: $currentTransactionType, Amount: $currentAmount, " +
+                    "Currency: $currentCurrencyIso, HIO ID: $currentTransactionIdHio")
             setResult(Activity.RESULT_OK, Intent(ACTION_TRANSACTION).apply {
                 putExtra(ExtraKeys.TRANSACTION_RESULT, "FAILED")
-                putExtra(ExtraKeys.ERROR_MESSAGE, "Parámetros incompletos")
-                putExtra(ExtraKeys.ERROR_MESSAGE_TITLE, "Error Datos")
+                putExtra(ExtraKeys.ERROR_MESSAGE, getString(R.string.error_missing_parameters))
+                putExtra(ExtraKeys.ERROR_MESSAGE_TITLE, getString(R.string.error_data_title))
             })
             finish()
             return
         }
 
-        setContentView(R.layout.activity_payment_ui)
-        findViewById<TextView>(R.id.tvAmountInfo).text =
-            "${formatAmount(currentAmount!!)} ${currentCurrencyIso}"
-
-        findViewById<Button>(R.id.btnAcceptPayment).setOnClickListener {
-            sendTransactionResponse(true, intent)
-        }
-        findViewById<Button>(R.id.btnCancelPayment).setOnClickListener {
-            sendTransactionResponse(false, intent)
-        }
-        findViewById<Button>(R.id.btnAlternativePayment).setOnClickListener {
-            startAlternativePayment(intent)
-        }
+        // Ya no se llama a setContentView ni se configuran los botones de la UI intermedia.
+        // Se procede directamente a iniciar el pago alternativo.
+        Log.d(TAG, "Iniciando directamente el flujo de pago alternativo para la transacción HIO ID: $currentTransactionIdHio")
+        startAlternativePayment(intent)
     }
 
     private fun sendTransactionResponse(accepted: Boolean, intent: Intent) {
@@ -273,18 +267,39 @@ class PaymentActivity : AppCompatActivity() {
                 }
 
                 override fun onTransactionStatusChanged(status: String) {
-                    // Si es la primera vez, iniciamos el contador de tiempo
+                    // Si es la primera vez, iniciamos la cuenta regresiva
                     if (status == AlternativePayment.STATUS_PENDING && paymentStartTime == 0L) {
                         paymentStartTime = System.currentTimeMillis()
 
-                        // Iniciar un job que actualice el mensaje de estado cada segundo
-                        // para mostrar cuánto tiempo lleva esperando el escaneo
+                        // Definir el tiempo límite para el escaneo (2 minutos = 120 segundos)
+                        val timeoutSeconds = 120
+
+                        // Iniciar un job que actualice la cuenta regresiva cada segundo
                         statusUpdateJob = lifecycleScope.launch {
-                            while (isActive) {
-                                val elapsedSeconds = (System.currentTimeMillis() - paymentStartTime) / 1000
-                                val message = "${getString(R.string.qr_payment_processing)}\n" +
-                                             "Tiempo transcurrido: ${elapsedSeconds}s"
+                            for (remainingSeconds in timeoutSeconds downTo 0) {
+                                if (!isActive) break
+
+                                // Formatear en formato MM:SS y mostrar el tiempo restante
+                                val minutes = remainingSeconds / 60
+                                val seconds = remainingSeconds % 60
+                                val timeFormatted = String.format("%02d:%02d", minutes, seconds)
+                                val message = getString(R.string.qr_payment_countdown_format_mm_ss, timeFormatted)
                                 qrDialog?.updateStatus(message)
+
+                                // Si llegamos a cero, timeout
+                                if (remainingSeconds == 0) {
+                                    Log.d(TAG, "Tiempo de espera agotado para el escaneo del QR")
+                                    qrDialog?.updateStatus(getString(R.string.qr_payment_timeout))
+
+                                    // Notificar timeout y cerrar después de un delay
+                                    lifecycleScope.launch {
+                                        delay(3000) // 3 segundos para leer el mensaje de timeout
+                                        qrDialog?.dismiss()
+                                        sendTransactionResponse(false, intent)
+                                    }
+                                    break
+                                }
+
                                 delay(1000) // Actualizar cada segundo
                             }
                         }
