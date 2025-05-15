@@ -1,123 +1,91 @@
 <?xml version="1.0" encoding="utf-8"?>
-<androidx.constraintlayout.widget.ConstraintLayout xmlns:android="http://schemas.android.com/apk/res/android"
-    xmlns:app="http://schemas.android.com/apk/res-auto"
+<LinearLayout xmlns:android="http://schemas.android.com/apk/res/android"
     xmlns:tools="http://schemas.android.com/tools"
     android:layout_width="match_parent"
     android:layout_height="match_parent"
-    android:background="@color/yappy_screen_background_blue">
+    android:orientation="vertical"
+    android:gravity="center_horizontal"
+    android:paddingTop="32dp"
+    android:paddingBottom="24dp"
+    android:paddingStart="16dp"
+    android:paddingEnd="16dp"
+    android:background="@drawable/dialog_yappy_background">
 
-    <!-- Logo de Yappy -->
     <ImageView
         android:id="@+id/ivYappyLogo"
-        android:layout_width="180dp"
-        android:layout_height="wrap_content"
-        android:layout_marginTop="48dp"
-        android:src="@drawable/ic_yappy_logo"
+        android:layout_width="253dp"
+        android:layout_height="108dp"
+        android:layout_marginBottom="8dp"
         android:adjustViewBounds="true"
-        android:scaleType="fitCenter"
-        app:layout_constraintLeft_toLeftOf="parent"
-        app:layout_constraintRight_toRightOf="parent"
-        app:layout_constraintTop_toTopOf="parent"
-        android:contentDescription="Yappy Logo"/>
+        android:contentDescription="Logo Yappy"
+        android:src="@drawable/ic_yappy_logo_dark" />
 
-    <!-- Título "Escanea el código QR con Yappy" -->
     <TextView
-        android:id="@+id/tvDialogTitle"
+        android:id="@+id/tvScanWithYappyInstruction"
         android:layout_width="match_parent"
         android:layout_height="wrap_content"
-        android:layout_marginTop="20dp"
-        android:layout_marginHorizontal="24dp"
         android:text="@string/scan_qr_title"
-        android:textSize="18sp"
-        android:textColor="@color/white"
-        android:fontFamily="sans-serif-medium"
+        android:textSize="15sp"
+        android:textColor="@color/yappy_text_on_blue_primary"
         android:gravity="center"
-        app:layout_constraintLeft_toLeftOf="parent"
-        app:layout_constraintRight_toRightOf="parent"
-        app:layout_constraintTop_toBottomOf="@id/ivYappyLogo" />
+        android:layout_marginBottom="16dp" />
 
-    <!-- Monto del pago -->
     <TextView
         android:id="@+id/tvQrAmount"
         android:layout_width="wrap_content"
         android:layout_height="wrap_content"
-        android:layout_marginTop="16dp"
-        android:textSize="22sp"
-        android:textColor="@color/white"
-        android:fontFamily="sans-serif-medium"
-        app:layout_constraintLeft_toLeftOf="parent"
-        app:layout_constraintRight_toRightOf="parent"
-        app:layout_constraintTop_toBottomOf="@id/tvDialogTitle"
-        tools:text="12.34 PAB" />
+        android:textSize="24sp"
+        android:textStyle="bold"
+        android:textColor="@color/yappy_text_on_blue_primary"
+        android:layout_marginBottom="20dp"
+        tools:text="$8.56" />
 
-    <!-- Código QR - Fondo blanco para el código -->
     <FrameLayout
-        android:id="@+id/qrBackground"
-        android:layout_width="270dp"
-        android:layout_height="270dp"
-        android:layout_marginTop="24dp"
-        android:background="@color/white"
-        android:padding="7dp"
-        app:layout_constraintLeft_toLeftOf="parent"
-        app:layout_constraintRight_toRightOf="parent"
-        app:layout_constraintTop_toBottomOf="@id/tvQrAmount">
+        android:layout_width="wrap_content"
+        android:layout_height="wrap_content"
+        android:layout_marginBottom="20dp"
+        android:padding="4dp"
+        android:background="@color/white">
 
-        <!-- Código QR -->
         <ImageView
             android:id="@+id/ivQrCode"
-            android:layout_width="match_parent"
-            android:layout_height="match_parent"
-            android:scaleType="fitCenter"
-            android:contentDescription="@string/qr_code_description" />
+            android:layout_width="296dp"
+            android:layout_height="290dp"
+            android:contentDescription="@string/qr_code_description"
+            android:scaleType="fitCenter" />
     </FrameLayout>
 
-    <!-- Estado del pago (cuenta regresiva) -->
+    <TextView
+        android:id="@+id/tvScanInstruction"
+        android:layout_width="match_parent"
+        android:layout_height="wrap_content"
+        android:text="@string/scan_qr_instruction"
+        android:textColor="@color/yappy_text_on_blue_secondary"
+        android:textSize="14sp"
+        android:textAlignment="center"
+        android:layout_marginBottom="4dp"
+        android:paddingHorizontal="10dp"/>
+
     <TextView
         android:id="@+id/tvQrStatus"
         android:layout_width="match_parent"
         android:layout_height="wrap_content"
-        android:layout_marginHorizontal="24dp"
-        android:layout_marginTop="24dp"
         android:textAlignment="center"
-        android:textSize="18sp"
-        android:textColor="@color/white"
-        android:fontFamily="sans-serif"
-        app:layout_constraintLeft_toLeftOf="parent"
-        app:layout_constraintRight_toRightOf="parent"
-        app:layout_constraintTop_toBottomOf="@id/qrBackground"
-        tools:text="Tiempo restante: 120 segundos" />
-
-    <!-- Texto de instrucción reposicionado encima del botón -->
-    <TextView
-        android:id="@+id/tvQrInstruction"
-        android:layout_width="match_parent"
-        android:layout_height="wrap_content"
-        android:layout_marginHorizontal="30dp"
+        android:textColor="@color/yappy_text_on_blue_secondary"
+        android:textSize="14sp"
         android:layout_marginBottom="24dp"
-        android:text="@string/scan_qr_instruction"
-        android:textAlignment="center"
-        android:textSize="16sp"
-        android:fontFamily="sans-serif"
-        android:textColor="@color/white"
-        app:layout_constraintLeft_toLeftOf="parent"
-        app:layout_constraintRight_toRightOf="parent"
-        app:layout_constraintBottom_toTopOf="@id/btnCancelQr" />
+        tools:text="Tiempo restante: 01:23" />
 
-    <!-- Botón de cancelación -->
     <Button
         android:id="@+id/btnCancelQr"
-        android:layout_width="0dp"
+        android:layout_width="wrap_content"
         android:layout_height="wrap_content"
-        android:layout_marginHorizontal="30dp"
-        android:layout_marginBottom="48dp"
+        android:backgroundTint="@color/yappy_button_cancel_red"
+        android:paddingStart="40dp"
+        android:paddingTop="12dp"
+        android:paddingEnd="40dp"
+        android:paddingBottom="12dp"
         android:text="@string/cancel_payment"
-        android:textSize="16sp"
-        android:textColor="@color/white"
-        android:fontFamily="sans-serif-medium"
-        android:background="@drawable/shape_button_cancel_yappy"
-        android:padding="14dp"
-        app:layout_constraintLeft_toLeftOf="parent"
-        app:layout_constraintRight_toRightOf="parent"
-        app:layout_constraintBottom_toBottomOf="parent" />
+        android:textColor="@color/white" />
 
-</androidx.constraintlayout.widget.ConstraintLayout>
+</LinearLayout>

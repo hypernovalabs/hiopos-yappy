@@ -4,6 +4,7 @@ import android.app.Dialog
 import android.content.Context
 import android.graphics.Bitmap
 import android.graphics.Color
+import android.graphics.drawable.ColorDrawable
 import android.os.Bundle
 import android.util.Log
 import android.view.LayoutInflater
@@ -57,7 +58,7 @@ class QrCodeDialog : DialogFragment() {
             // Configurar el diálogo para ocupar toda la pantalla
             dialog.window?.apply {
                 setLayout(ViewGroup.LayoutParams.MATCH_PARENT, ViewGroup.LayoutParams.MATCH_PARENT)
-                setBackgroundDrawableResource(android.R.color.white) // Fondo blanco
+                setBackgroundDrawable(ColorDrawable(Color.TRANSPARENT)) // Fondo transparente
             }
         }
     }
@@ -67,23 +68,33 @@ class QrCodeDialog : DialogFragment() {
         container: ViewGroup?,
         savedInstanceState: Bundle?
     ): View? {
+        // Make dialog background transparent
+        dialog?.window?.setBackgroundDrawable(ColorDrawable(Color.TRANSPARENT))
         return inflater.inflate(R.layout.dialog_qr_code, container, false)
     }
 
     override fun onViewCreated(view: View, savedInstanceState: Bundle?) {
         super.onViewCreated(view, savedInstanceState)
 
+        val tvScanWithYappyInstruction = view.findViewById<TextView>(R.id.tvScanWithYappyInstruction)
         val tvAmount = view.findViewById<TextView>(R.id.tvQrAmount)
         val ivQrCode = view.findViewById<ImageView>(R.id.ivQrCode)
+        val tvScanInstruction = view.findViewById<TextView>(R.id.tvScanInstruction)
         val btnCancel = view.findViewById<Button>(R.id.btnCancelQr)
         statusTextView = view.findViewById<TextView>(R.id.tvQrStatus)
 
-        // Mostrar el monto formateado con símbolo de dólar
-        val formattedAmount = formatAmount(amount ?: "0")
-        tvAmount.text = getString(R.string.payment_amount_display_usd).format(formattedAmount)
+        // Establecer el texto de instrucción superior
+        tvScanWithYappyInstruction.text = getString(R.string.scan_qr_title)
 
-        // Establecer texto de estado inicial
-        statusTextView?.text = getString(R.string.qr_payment_processing)
+        // Establecer el texto de instrucción debajo del QR
+        tvScanInstruction.text = getString(R.string.scan_qr_instruction)
+
+        // Mostrar el monto formateado con símbolo de dólar (sin "Procesar pago:")
+        val formattedAmount = formatAmount(amount ?: "0")
+        tvAmount.text = "$" + formattedAmount
+
+        // Establecer texto de estado inicial para el tiempo restante
+        updateStatus(getString(R.string.qr_payment_countdown_format_mm_ss, "02:00"))
 
         // Generar y mostrar el código QR
         Log.d(TAG, "=== Generando QR con hash: $qrHash ===")
