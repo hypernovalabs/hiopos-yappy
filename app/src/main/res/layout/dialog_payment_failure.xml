@@ -1,0 +1,61 @@
+<?xml version="1.0" encoding="utf-8"?>
+<RelativeLayout xmlns:android="http://schemas.android.com/apk/res/android"
+    xmlns:tools="http://schemas.android.com/tools"
+    android:layout_width="match_parent"
+    android:layout_height="match_parent"
+    android:background="@drawable/dialog_yappy_failure_background"
+    android:padding="24dp">
+
+    <LinearLayout
+        android:layout_width="wrap_content"
+        android:layout_height="wrap_content"
+        android:orientation="vertical"
+        android:layout_centerInParent="true"
+        android:gravity="center_horizontal">
+
+        <ImageView
+            android:id="@+id/ivFailureIcon"
+            android:layout_width="100dp"
+            android:layout_height="100dp"
+            tools:src="@drawable/ic_yappy_cancel_x" /> <!-- Se establecerá dinámicamente -->
+
+        <TextView
+            android:id="@+id/tvFailureMessage"
+            android:layout_width="wrap_content"
+            android:layout_height="wrap_content"
+            tools:text="Pago Cancelado"
+            android:textSize="28sp"
+            android:textStyle="bold"
+            android:textColor="@color/yappy_failure_text_color"
+            android:layout_marginTop="24dp"
+            android:gravity="center"/>
+
+        <TextView
+            android:id="@+id/tvFailureSubMessage"
+            android:layout_width="wrap_content"
+            android:layout_height="wrap_content"
+            tools:text="La transacción no pudo ser completada."
+            android:textSize="16sp"
+            android:textColor="@color/yappy_failure_text_color"
+            android:layout_marginTop="8dp"
+            android:gravity="center"
+            android:visibility="gone"/> <!-- Opcional, visible si hay submensaje -->
+    </LinearLayout>
+
+    <Button
+        android:id="@+id/btnFailureAcknowledge"
+        android:layout_width="wrap_content"
+        android:layout_height="wrap_content"
+        android:layout_alignParentBottom="true"
+        android:layout_centerHorizontal="true"
+        android:layout_marginBottom="40dp"
+        android:backgroundTint="@color/yappy_failure_button_background"
+        android:text="@string/payment_failure_accept_button"
+        android:textColor="@color/yappy_failure_button_text_color"
+        android:paddingStart="60dp"
+        android:paddingEnd="60dp"
+        android:paddingTop="14dp"
+        android:paddingBottom="14dp"
+        android:textSize="16sp"/>
+
+</RelativeLayout>

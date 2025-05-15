@@ -56,8 +56,12 @@ class AlternativePayment(
         taxDetail: String?,
         languageIso: String?
     ): Boolean = runBlocking {
-        // Aquí puedes registrar datos si lo deseas...
-        procesarPagoCompleto(amount ?: "0")
+        // Guardar los datos para la descripción
+        val safeTransactionType = transactionType ?: "VENTA"
+        val safeTransactionId = transactionIdHio ?: 0
+
+        // Procesar el pago con los datos adicionales para la descripción
+        procesarPagoCompleto(amount ?: "0", safeTransactionType, safeTransactionId)
     }
 
     /**
@@ -81,12 +85,16 @@ class AlternativePayment(
     /**
      * Método que realiza todo el flujo: abrir sesión, generar QR, monitorear y cerrar sesión
      */
-    suspend fun procesarPagoCompleto(amount: String): Boolean = withContext(Dispatchers.IO) {
+    suspend fun procesarPagoCompleto(
+        amount: String,
+        transactionType: String = "VENTA",
+        transactionIdHio: Int = 0
+    ): Boolean = withContext(Dispatchers.IO) {
         try {
             Log.d(TAG, "=== Iniciando flujo de Yappy ===")
             val token = abrirSesion() ?: return@withContext false
 
-            val qrData = generarQr(amount, token)
+            val qrData = generarQr(amount, token, transactionType, transactionIdHio)
             val txId = qrData["transactionId"]
             val hash = qrData["hash"]
 
@@ -313,7 +321,12 @@ class AlternativePayment(
         }
     }
 
-    private suspend fun generarQr(amountStr: String, token: String): Map<String, String> = withContext(Dispatchers.IO) {
+    private suspend fun generarQr(
+        amountStr: String,
+        token: String,
+        transactionType: String = "VENTA",
+        transactionIdHio: Int = 0
+    ): Map<String, String> = withContext(Dispatchers.IO) {
         try {
             // Para depuración, usar un modo Mock
             if (useMock) {
@@ -330,11 +343,23 @@ class AlternativePayment(
                     "0.00"
                 }
 
+                // Construir la descripción formateada para el modo mock
+                val cleanedTransactionType = transactionType
+                    .let { type -> java.text.Normalizer.normalize(type, java.text.Normalizer.Form.NFD) }
+                    .replace("\\p{InCombiningDiacriticalMarks}+".toRegex(), "")
+                    .replace("[^a-zA-Z0-9 ]".toRegex(), "")
+                    .replace("\\s+".toRegex(), " ") // Colapsar múltiples espacios en uno solo
+                    .uppercase()
+                    .trim()
+
+                val yappyDescription = "YAPPY ${cleanedTransactionType} ${transactionIdHio}"
+                Log.d(TAG, "Mock: Descripción para Yappy: $yappyDescription")
+
                 // Generar datos mock consistentes
                 val mockTxId = "mock-tx-${System.currentTimeMillis()}"
                 val mockHash = "mock-hash-${System.currentTimeMillis()}"
 
-                Log.d(TAG, "Mock: QR generado para monto $formattedAmount PAB - txId: $mockTxId, hash: $mockHash")
+                Log.d(TAG, "Mock: QR generado para monto $formattedAmount PAB - txId: $mockTxId, hash: $mockHash, descripción: $yappyDescription")
 
                 return@withContext mapOf(
                     "transactionId" to mockTxId,
@@ -388,10 +413,28 @@ class AlternativePayment(
                     put("discount", 0.0) // Descuento
                     // Eliminamos currency que no aparece en la documentación
                 }
+                // 1. Limpiar el transactionType (quitar tildes y caracteres especiales)
+                val cleanedTransactionType = transactionType
+                    .let { type ->
+                        // Normalizar para separar caracteres base de sus diacríticos
+                        java.text.Normalizer.normalize(type, java.text.Normalizer.Form.NFD)
+                    }
+                    .replace("\\p{InCombiningDiacriticalMarks}+".toRegex(), "") // Remover diacríticos
+                    .replace("[^a-zA-Z0-9 ]".toRegex(), "") // Remover cualquier cosa que no sea letra, número o espacio
+                    .replace("\\s+".toRegex(), " ") // Colapsar múltiples espacios en uno solo
+                    .uppercase() // Convertir a mayúsculas para consistencia
+                    .trim() // Quitar espacios al inicio/final
+
+                // 2. Construir la descripción en formato: "YAPPY [TIPO_TRANSACCION] [ID_TRANSACCION]"
+                val yappyDescription = "YAPPY ${cleanedTransactionType} ${transactionIdHio}"
+
+                // Log para verificar la descripción formateada
+                Log.d(TAG, "Descripción para Yappy (texto plano): $yappyDescription")
+
                 val inner = JSONObject().apply {
                     put("charge_amount", chargeAmount)
-                    put("order_id", JSONObject.NULL)
-                    put("description", "Venta Yappy")
+                    put("order_id", transactionIdHio.toString()) // Usar transactionIdHio como order_id para tracking
+                    put("description", yappyDescription) // Descripción actualizada y limpia
                 }
 
                 // 2. Envoltorio exterior que requiere la API UAT

@@ -56,4 +56,7 @@ dependencies {
 
     // Para generar y mostrar códigos QR
     implementation("com.google.zxing:core:3.5.2")
+
+    // Para animación de confeti en la pantalla de éxito
+    implementation("nl.dionsegijn:konfetti-xml:2.0.2")
 }

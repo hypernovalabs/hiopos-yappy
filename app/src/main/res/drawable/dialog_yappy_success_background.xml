@@ -1,0 +1,27 @@
+<?xml version="1.0" encoding="utf-8"?>
+<layer-list xmlns:android="http://schemas.android.com/apk/res/android">
+    <!-- Capa 1: Fondo principal Verde -->
+    <item>
+        <shape android:shape="rectangle">
+            <solid android:color="@color/yappy_success_background_green" />
+        </shape>
+    </item>
+
+    <!-- Capa 2: Esfera Naranja (inferior izquierda) -->
+    <item
+        android:drawable="@drawable/sphere_orange"
+        android:width="250dp"
+        android:height="250dp"
+        android:gravity="bottom|left"
+        android:left="-125dp"
+        android:bottom="-125dp" />
+
+    <!-- Capa 3: Esfera Azul de la Esquina (superior derecha) -->
+    <item
+        android:drawable="@drawable/sphere_corner_blue"
+        android:width="200dp"
+        android:height="200dp"
+        android:gravity="top|right"
+        android:right="-100dp"
+        android:top="-100dp" />
+</layer-list>

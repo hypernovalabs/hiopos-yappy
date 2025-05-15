@@ -78,6 +78,10 @@ class PaymentActivity : AppCompatActivity() {
     private var currentCurrencyIso: String? = null
     private var currentTransactionType: String? = null
 
+    // Diálogos
+    private var successDialog: PaymentSuccessDialog? = null
+    private var failureDialog: PaymentFailureDialog? = null
+
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
         Log.d(TAG, "onCreate: Intent action = ${intent.action}")
@@ -242,16 +246,8 @@ class PaymentActivity : AppCompatActivity() {
                         val errorMessage = hash.substringAfter("ERROR:")
                         Log.e(TAG, "Error en la generación de QR: $errorMessage")
 
-                        // Crear un diálogo de error en lugar del QR
-                        androidx.appcompat.app.AlertDialog.Builder(this@PaymentActivity)
-                            .setTitle("Error de Comunicación")
-                            .setMessage("No se pudo iniciar el pago con Yappy:\n\n$errorMessage")
-                            .setPositiveButton("Aceptar") { _, _ ->
-                                sendTransactionResponse(false, intent)
-                            }
-                            .setCancelable(false)
-                            .show()
-
+                        // Mostrar el diálogo de error genérico
+                        showPaymentFailureDialog(PaymentFailureDialog.FailureType.FAILED_GENERIC)
                         return
                     }
 
@@ -261,7 +257,9 @@ class PaymentActivity : AppCompatActivity() {
                         // Si el usuario cancela, intentamos cancelar el trabajo
                         Log.d(TAG, "Usuario canceló el pago con QR")
                         alternativePaymentJob?.cancel()
-                        sendTransactionResponse(false, intent)
+                        statusUpdateJob?.cancel()
+                        // Mostrar pantalla de cancelación
+                        showPaymentFailureDialog(PaymentFailureDialog.FailureType.CANCELLED)
                     }
                     qrDialog?.show(supportFragmentManager, "QRDialog")
                 }
@@ -329,21 +327,31 @@ class PaymentActivity : AppCompatActivity() {
                     // o falló definitivamente. Los estados intermedios se mantienen.
                     when (status) {
                         AlternativePayment.STATUS_COMPLETED -> {
-                            // Si el pago se completó con éxito, mostrar mensaje y cerrar después de 3 segundos
-                            lifecycleScope.launch {
-                                delay(3000)
-                                qrDialog?.dismiss()
-                            }
+                            // Si el pago se completó con éxito, cerrar el diálogo QR y mostrar pantalla de éxito
+                            statusUpdateJob?.cancel() // Detener contador de QR
+                            qrDialog?.dismiss() // Cerrar diálogo del QR inmediatamente
+
+                            // Mostrar el diálogo de éxito
+                            showPaymentSuccessDialog()
                         }
                         AlternativePayment.STATUS_FAILED,
-                        AlternativePayment.STATUS_ERROR,
+                        AlternativePayment.STATUS_ERROR -> {
+                            // Cerrar el diálogo QR y mostrar la pantalla de fallo genérico
+                            statusUpdateJob?.cancel()
+                            qrDialog?.dismiss()
+                            showPaymentFailureDialog(PaymentFailureDialog.FailureType.FAILED_GENERIC)
+                        }
                         AlternativePayment.STATUS_TIMEOUT -> {
-                            // Si hubo un error o fallo, mantener visible por más tiempo para que
-                            // el usuario vea el mensaje de error pero eventualmente cerrar
-                            lifecycleScope.launch {
-                                delay(5000) // 5 segundos para leer el mensaje de error
-                                qrDialog?.dismiss()
-                            }
+                            // Cerrar el diálogo QR y mostrar la pantalla de timeout
+                            statusUpdateJob?.cancel()
+                            qrDialog?.dismiss()
+                            showPaymentFailureDialog(PaymentFailureDialog.FailureType.TIMEOUT)
+                        }
+                        AlternativePayment.STATUS_CANCELED -> {
+                            // Cerrar el diálogo QR y mostrar la pantalla de cancelación
+                            statusUpdateJob?.cancel()
+                            qrDialog?.dismiss()
+                            showPaymentFailureDialog(PaymentFailureDialog.FailureType.CANCELLED)
                         }
                         // En estado PENDING no cerramos el diálogo, esperamos a que el usuario
                         // complete el pago o cancele manualmente
@@ -351,9 +359,28 @@ class PaymentActivity : AppCompatActivity() {
                 }
 
                 override fun onPaymentComplete(success: Boolean) {
-                    // Notificar el resultado a HioPos y terminar
+                    // Notificar el resultado a HioPos
                     Log.d(TAG, "Pago completado con resultado: ${if (success) "EXITOSO" else "FALLIDO"}")
-                    sendTransactionResponse(success, intent)
+
+                    if (success) {
+                        // Si ya mostramos el diálogo de éxito en onTransactionStatusChanged,
+                        // solo logueamos que se completó exitosamente
+                        if (successDialog?.isAdded != true) {
+                            Log.d(TAG, "onPaymentComplete: Éxito, pero el diálogo de éxito no se mostró. Mostrándolo ahora.")
+                            showPaymentSuccessDialog()
+                        } else {
+                            Log.d(TAG, "onPaymentComplete: Éxito. El diálogo de éxito ya está siendo mostrado.")
+                        }
+                    } else {
+                        // Si el pago falló y no se ha mostrado el diálogo de fallo
+                        if (failureDialog?.isAdded != true) {
+                            Log.d(TAG, "onPaymentComplete: Fallido, mostrando diálogo de fallo genérico.")
+                            qrDialog?.dismiss() // Asegurarse de cerrar el diálogo QR
+                            showPaymentFailureDialog(PaymentFailureDialog.FailureType.FAILED_GENERIC)
+                        } else {
+                            Log.d(TAG, "onPaymentComplete: Fallido. El diálogo de fallo ya está siendo mostrado.")
+                        }
+                    }
                 }
             })
 
@@ -361,7 +388,12 @@ class PaymentActivity : AppCompatActivity() {
             try {
                 // El resultado lo procesaremos a través de los callbacks
                 Log.d(TAG, "Iniciando flujo completo de pago")
-                alternativePayment.procesarPagoCompleto(currentAmount ?: "0")
+                Log.d(TAG, "Tipo de transacción: $currentTransactionType, ID de transacción: $currentTransactionIdHio")
+                alternativePayment.procesarPagoCompleto(
+                    amount = currentAmount ?: "0",
+                    transactionType = currentTransactionType ?: "VENTA",
+                    transactionIdHio = currentTransactionIdHio ?: 0
+                )
             } catch (e: Exception) {
                 // En caso de error, asegurar que cerramos el diálogo y notificamos fallo
                 Log.e(TAG, "Error en pago alternativo", e)
@@ -369,5 +401,41 @@ class PaymentActivity : AppCompatActivity() {
                 sendTransactionResponse(false, intent)
             }
         }
+    }
+
+    /**
+     * Muestra el diálogo de pago exitoso con animación de confeti
+     */
+    private fun showPaymentSuccessDialog() {
+        if (successDialog?.isAdded == true) {
+            return // Ya se está mostrando
+        }
+
+        successDialog = PaymentSuccessDialog.newInstance()
+        successDialog?.setOnFinishListener {
+            // Cuando el usuario presiona "TERMINAR" en el diálogo de éxito
+            Log.d(TAG, "Flujo de pago completado y confirmado por el usuario.")
+            // Enviamos la respuesta exitosa a HioPos
+            sendTransactionResponse(true, intent)
+        }
+
+        successDialog?.show(supportFragmentManager, "PaymentSuccessDialog")
+    }
+
+    /**
+     * Muestra el diálogo de pago fallido/cancelado/timeout
+     */
+    private fun showPaymentFailureDialog(type: PaymentFailureDialog.FailureType) {
+        if (failureDialog?.isAdded == true || successDialog?.isAdded == true) {
+            return // Evitar múltiples diálogos
+        }
+
+        failureDialog = PaymentFailureDialog.newInstance(type)
+        failureDialog?.setOnAcknowledgeListener {
+            Log.d(TAG, "Flujo de pago no exitoso. Confirmado por usuario.")
+            sendTransactionResponse(false, intent) // Envía FAILED
+        }
+
+        failureDialog?.show(supportFragmentManager, "PaymentFailureDialog")
     }
 }

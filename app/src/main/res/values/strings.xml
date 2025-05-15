@@ -32,4 +32,14 @@
     <string name="qr_payment_completed">¡Pago completado!</string>
     <string name="qr_payment_failed">Pago fallido</string>
     <string name="qr_payment_timeout">Tiempo de espera agotado</string>
+
+    <!-- Success dialog -->
+    <string name="payment_success_title">¡Pago Completado!</string>
+    <string name="payment_success_finish_button">TERMINAR</string>
+
+    <!-- Failure dialog -->
+    <string name="payment_failure_accept_button">ACEPTAR</string>
+    <string name="payment_failure_canceled_submessage">La operación fue cancelada.</string>
+    <string name="payment_failure_timeout_submessage">No se recibió respuesta a tiempo.</string>
+    <string name="payment_failure_generic_submessage">La transacción no pudo ser completada.</string>
 </resources>

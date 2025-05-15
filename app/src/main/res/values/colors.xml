@@ -31,4 +31,18 @@
 
     <!-- Color para el panel/tarjeta semi-transparente -->
     <color name="yappy_card_panel_background">#CC29ABE2</color> <!-- Azul claro semi-transparente (80% opacidad) -->
+
+    <!-- Colores para la pantalla de éxito -->
+    <color name="yappy_success_background_green">#A8D8B9</color> <!-- Verde claro para el fondo -->
+    <color name="yappy_success_icon_green_dark">#00843D</color> <!-- Verde oscuro para el icono de check -->
+    <color name="yappy_success_text_color">#FFFFFF</color> <!-- Texto sobre fondo verde -->
+    <color name="yappy_success_button_background">@color/yappy_success_icon_green_dark</color> <!-- Botón "Terminar" -->
+    <color name="yappy_success_button_text_color">#FFFFFF</color>
+
+    <!-- Colores para la pantalla de error/cancelación/timeout -->
+    <color name="yappy_failure_background">#757575</color> <!-- Gris neutro para el fondo -->
+    <color name="yappy_failure_icon_color">#D32F2F</color> <!-- Rojo oscuro para iconos de error/cancelación -->
+    <color name="yappy_failure_text_color">#FFFFFF</color> <!-- Texto sobre fondo de error -->
+    <color name="yappy_failure_button_background">@color/yappy_failure_icon_color</color> <!-- Botón "Aceptar" -->
+    <color name="yappy_failure_button_text_color">#FFFFFF</color>
 </resources>
