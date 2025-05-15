@@ -22,26 +22,26 @@ object CurlGenerator {
     ): String {
         val sb = StringBuilder()
         sb.append("curl -X $method \\\n")
-        
+
         // Agregar cabeceras
         headers.forEach { (key, value) ->
             // Sanitizar valor para evitar problemas con caracteres especiales
             val sanitizedValue = value.replace("\"", "\\\"")
             sb.append("  -H \"$key: $sanitizedValue\" \\\n")
         }
-        
+
         // Agregar cuerpo si existe
         if (!body.isNullOrEmpty()) {
             val sanitizedBody = body.replace("\"", "\\\"").replace("\n", "")
             sb.append("  -d \"$sanitizedBody\" \\\n")
         }
-        
+
         // Agregar URL
         sb.append("  \"$url\"")
-        
+
         return sb.toString()
     }
-    
+
     /**
      * Oculta información sensible como claves API o tokens para la presentación
      *
@@ -50,14 +50,14 @@ object CurlGenerator {
      */
     fun sanitizeForDisplay(curlCommand: String): String {
         var sanitized = curlCommand
-        
+
         // Ocultar API Keys
         sanitized = sanitized.replace(Regex("-H \"X-API-Key: ([^\"]*)\""), "-H \"X-API-Key: ***REDACTED***\"")
         sanitized = sanitized.replace(Regex("-H \"X-Secret-Key: ([^\"]*)\""), "-H \"X-Secret-Key: ***REDACTED***\"")
-        
+
         // Ocultar tokens de autorización
         sanitized = sanitized.replace(Regex("-H \"Authorization: Bearer ([^\"]*)\""), "-H \"Authorization: Bearer ***REDACTED***\"")
-        
+
         return sanitized
     }
 }
