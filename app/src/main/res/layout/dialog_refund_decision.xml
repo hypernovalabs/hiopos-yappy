@@ -1,0 +1,62 @@
+<?xml version="1.0" encoding="utf-8"?>
+<LinearLayout xmlns:android="http://schemas.android.com/apk/res/android"
+    xmlns:tools="http://schemas.android.com/tools"
+    xmlns:app="http://schemas.android.com/apk/res-auto"
+    android:layout_width="match_parent"
+    android:layout_height="match_parent"
+    android:orientation="vertical"
+    android:gravity="center"
+    android:padding="32dp"
+    android:background="@color/refund_decision_background_dark">
+
+    <TextView
+        android:id="@+id/tvRefundDecisionTitle"
+        android:layout_width="wrap_content"
+        android:layout_height="wrap_content"
+        android:text="Confirmar Devolución de Pago"
+        android:textSize="28sp"
+        android:textStyle="bold"
+        android:textColor="@color/refund_decision_text_primary_on_dark"
+        android:gravity="center"
+        android:layout_marginBottom="16dp"/>
+
+    <TextView
+        android:id="@+id/tvRefundAmountToReturn"
+        android:layout_width="wrap_content"
+        android:layout_height="wrap_content"
+        tools:text="Monto a devolver: $12.84"
+        android:textSize="20sp"
+        android:textColor="@color/refund_decision_text_secondary_on_dark"
+        android:layout_marginBottom="48dp"/>
+
+    <Button
+        android:id="@+id/btnYesReturnPayment"
+        android:layout_width="match_parent"
+        android:layout_height="wrap_content"
+        android:text="SÍ, DEVOLVER PAGO"
+        android:backgroundTint="@color/refund_decision_button_yes_background"
+        android:textColor="@color/refund_decision_button_yes_text"
+        app:icon="@drawable/ic_yappy_success_check"
+        app:iconTint="@color/refund_decision_button_yes_icon_tint"
+        app:iconGravity="textStart"
+        app:iconPadding="12dp"
+        android:paddingVertical="16dp"
+        android:textSize="16sp"
+        android:layout_marginBottom="20dp"
+        app:cornerRadius="8dp"/>
+
+    <Button
+        android:id="@+id/btnNoReturnPayment"
+        android:layout_width="match_parent"
+        android:layout_height="wrap_content"
+        android:text="NO DEVOLVER PAGO"
+        android:backgroundTint="@color/refund_decision_button_no_background"
+        android:textColor="@color/refund_decision_button_no_text"
+        app:icon="@drawable/ic_yappy_cancel_x"
+        app:iconTint="@color/refund_decision_button_no_icon_tint"
+        app:iconGravity="textStart"
+        app:iconPadding="12dp"
+        android:paddingVertical="16dp"
+        android:textSize="16sp"
+        app:cornerRadius="8dp"/>
+</LinearLayout>

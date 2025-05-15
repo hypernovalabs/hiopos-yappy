@@ -1,5 +1,5 @@
 <resources>
-    <string name="app_name">TEF Banesco</string>
+    <string name="app_name">YAPPY</string>
     <string name="payment_title">Procesando pago</string>
     <string name="accept_payment">Aceptar Pago</string>
     <string name="cancel_payment">Cancelar Pago</string>
@@ -7,10 +7,10 @@
     <string name="payment_amount_format">Procesar pago: %1$s %2$s</string>
     <string name="error_missing_parameters">Parámetros de entrada incompletos.</string>
     <string name="error_module_internal">Error Interno del Módulo de Pago</string>
-    <string name="error_data_title">Error de Datos - Módulo TEF</string>
+    <string name="error_data_title">Error de Datos - Módulo YAPPY</string>
     <string name="error_parameter_missing">Parámetro requerido ausente: %1$s</string>
     <string name="error_parameters_missing">Parámetros de entrada incompletos o inválidos: %1$s</string>
-    <string name="error_payment_canceled">Pago cancelado por el usuario desde el módulo TEFBanesco.</string>
+    <string name="error_payment_canceled">Pago cancelado por el usuario desde el módulo YAPPY.</string>
     <string name="error_payment_canceled_title">Pago Cancelado</string>
 
     <!-- Errores específicos de Yappy -->

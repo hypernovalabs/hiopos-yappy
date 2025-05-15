@@ -45,4 +45,34 @@
     <color name="yappy_failure_text_color">#FFFFFF</color> <!-- Texto sobre fondo de error -->
     <color name="yappy_failure_button_background">@color/yappy_failure_icon_color</color> <!-- Botón "Aceptar" -->
     <color name="yappy_failure_button_text_color">#FFFFFF</color>
+
+    <!-- COLORES PARA LA NUEVA PANTALLA DE DECISIÓN DE DEVOLUCIÓN (estilo oscuro) -->
+    <color name="refund_decision_background_dark">#2C2C2C</color> <!-- Un gris oscuro, ajusta al de la imagen -->
+    <color name="refund_decision_text_primary_on_dark">#FFFFFF</color>
+    <color name="refund_decision_text_secondary_on_dark">#B0B0B0</color> <!-- Un gris más claro para texto secundario -->
+
+    <color name="refund_decision_button_yes_background">#00C853</color> <!-- Verde brillante (similar a imagen 3) -->
+    <color name="refund_decision_button_yes_text">#FFFFFF</color>
+    <color name="refund_decision_button_yes_icon_tint">#FFFFFF</color>
+
+    <color name="refund_decision_button_no_background">#1E1E1E</color> <!-- Negro o gris muy oscuro (similar a imagen 3) -->
+    <color name="refund_decision_button_no_text">#FFFFFF</color>
+    <color name="refund_decision_button_no_icon_tint">#FFFFFF</color> <!-- O un rojo claro para el icono X si el fondo es muy oscuro -->
+
+    <!-- COLORES PARA EL DIÁLOGO DE CONFIRMACIÓN FINAL DE DEVOLUCIÓN (estilo oscuro modal) -->
+    <color name="refund_final_dialog_background">#3C3C3C</color> <!-- Gris oscuro para el fondo del diálogo modal -->
+    <color name="refund_final_dialog_text_primary">#FFFFFF</color>
+    <color name="refund_final_dialog_text_secondary">#B0B0B0</color>
+    <color name="refund_final_dialog_input_background">#4A4A4A</color> <!-- Fondo para el campo de texto si es diferente -->
+    <color name="refund_final_dialog_input_hint">#9E9E9E</color>
+    <color name="refund_final_dialog_checkbox_text">#D0D0D0</color>
+
+    <color name="refund_final_dialog_button_confirm_background">#00E676</color> <!-- Verde brillante para Confirmar -->
+    <color name="refund_final_dialog_button_confirm_text">#FFFFFF</color> <!-- O #000000 si el verde es muy claro -->
+
+    <color name="refund_final_dialog_button_cancel_background">#4D4D4D</color> <!-- Gris un poco más claro que el fondo del diálogo para Cancelar -->
+    <color name="refund_final_dialog_button_cancel_text">#FFFFFF</color>
+
+    <!-- Color para validación de errores -->
+    <color name="refund_validation_error_red">#FF5252</color>
 </resources>

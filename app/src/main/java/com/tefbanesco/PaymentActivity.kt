@@ -82,6 +82,9 @@ class PaymentActivity : AppCompatActivity() {
     private var successDialog: PaymentSuccessDialog? = null
     private var failureDialog: PaymentFailureDialog? = null
 
+    // Intent original para respuestas
+    private var originalIntentActionForResponse: String? = null
+
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
         Log.d(TAG, "onCreate: Intent action = ${intent.action}")
@@ -163,45 +166,85 @@ class PaymentActivity : AppCompatActivity() {
         currentAmount           = intent.getStringExtra(ExtraKeys.AMOUNT)
         currentCurrencyIso      = intent.getStringExtra(ExtraKeys.CURRENCY_ISO)
         currentTransactionIdHio = intent.getIntExtra(ExtraKeys.TRANSACTION_ID_HIO, 0)
+        originalIntentActionForResponse = intent.action // Guardar la acción para la respuesta
 
-        // Validación de campos obligatorios
-        if (currentTransactionType.isNullOrBlank()
-            || currentAmount.isNullOrBlank()
-            || currentCurrencyIso.isNullOrBlank()
-            || currentTransactionIdHio == 0
-        ) {
-            Log.e(TAG, "Parámetros incompletos para la transacción. " +
-                    "Type: $currentTransactionType, Amount: $currentAmount, " +
-                    "Currency: $currentCurrencyIso, HIO ID: $currentTransactionIdHio")
-            setResult(Activity.RESULT_OK, Intent(ACTION_TRANSACTION).apply {
-                putExtra(ExtraKeys.TRANSACTION_RESULT, "FAILED")
-                putExtra(ExtraKeys.ERROR_MESSAGE, getString(R.string.error_missing_parameters))
-                putExtra(ExtraKeys.ERROR_MESSAGE_TITLE, getString(R.string.error_data_title))
-            })
-            finish()
+        Log.d(TAG, "handleTransaction - Tipo: $currentTransactionType, Monto (centavos): $currentAmount, ID HioPOS: $currentTransactionIdHio")
+
+        if (currentTransactionType.isNullOrBlank() || currentAmount.isNullOrBlank()) {
+            Log.e(TAG, "Parámetros incompletos: Tipo o Monto faltante.")
+            sendSimpleResponse(false, "Parámetros incompletos", "Error Datos")
             return
         }
 
-        // Ya no se llama a setContentView ni se configuran los botones de la UI intermedia.
-        // Se procede directamente a iniciar el pago alternativo.
-        Log.d(TAG, "Iniciando directamente el flujo de pago alternativo para la transacción HIO ID: $currentTransactionIdHio")
-        startAlternativePayment(intent)
+        if ("REFUND".equals(currentTransactionType, ignoreCase = true)) {
+            Log.d(TAG, "Detectado TransactionType: REFUND. Mostrando pantalla de decisión de devolución.")
+            setContentView(R.layout.dialog_refund_decision) // Usar el layout de decisión
+
+            val tvAmountToReturn: TextView = findViewById(R.id.tvRefundAmountToReturn)
+            val btnYesReturn: Button = findViewById(R.id.btnYesReturnPayment)
+            val btnNoReturn: Button = findViewById(R.id.btnNoReturnPayment)
+
+            tvAmountToReturn.text = "Monto a devolver: ${formatAmountForDisplay(currentAmount)}"
+
+            btnNoReturn.setOnClickListener {
+                Log.d(TAG, "Usuario seleccionó 'No Devolver Pago'.")
+                sendSimpleResponse(false, "Devolución no procesada por el usuario.", "Devolución Cancelada")
+            }
+
+            btnYesReturn.setOnClickListener {
+                Log.d(TAG, "Usuario seleccionó 'Sí, Devolver Pago'. Mostrando diálogo de confirmación final.")
+                showFinalRefundConfirmationDialog()
+            }
+            return
+        } else {
+            // Lógica existente para otros tipos de transacción (ej. SALE -> Yappy QR)
+            Log.d(TAG, "TransactionType es $currentTransactionType. Procediendo con flujo de pago (Yappy).")
+            if (currentCurrencyIso.isNullOrBlank() || currentTransactionIdHio == 0) {
+                 Log.e(TAG, "Parámetros incompletos para SALE: CurrencyISO o TransactionIdHio.")
+                sendSimpleResponse(false, "Parámetros incompletos para la venta.", "Error Datos Venta")
+                return
+            }
+            startAlternativePayment(intent)
+        }
     }
 
     private fun sendTransactionResponse(accepted: Boolean, intent: Intent) {
-        val result = Intent(ACTION_TRANSACTION).apply {
+        val result = Intent(originalIntentActionForResponse ?: ACTION_TRANSACTION).apply {
             putExtra(ExtraKeys.TRANSACTION_TYPE, currentTransactionType)
             putExtra(ExtraKeys.AMOUNT, currentAmount)
             putExtra(ExtraKeys.TRANSACTION_RESULT, if (accepted) "ACCEPTED" else "FAILED")
-            if (!accepted) {
+
+            if (accepted) {
+                // Para SALE (Yappy)
+                if ("SALE".equals(currentTransactionType, ignoreCase = true)) {
+                    putExtra(ExtraKeys.AUTHORIZATION_ID, "YAPPY_AUTH_${System.currentTimeMillis() % 100000}")
+                    putExtra(ExtraKeys.CARD_HOLDER, "CLIENTE YAPPY")
+                    putExtra(ExtraKeys.CARD_TYPE, "VISA")
+                    putExtra(ExtraKeys.CARD_NUM, "**** **** **** 1234")
+                }
+                // Para REFUND (manual), los datos se ponen en showFinalRefundConfirmationDialog
+            } else {
+                // Mensajes de error genéricos si no se especificaron antes
                 putExtra(ExtraKeys.ERROR_MESSAGE, getString(R.string.error_payment_canceled))
                 putExtra(ExtraKeys.ERROR_MESSAGE_TITLE, getString(R.string.error_payment_canceled_title))
-            } else {
-                putExtra(ExtraKeys.AUTHORIZATION_ID, "AUTH_${System.currentTimeMillis() % 100000}")
-                putExtra(ExtraKeys.CARD_HOLDER, "CLIENTE YAPPY")
-                putExtra(ExtraKeys.CARD_TYPE, "VISA")
-                putExtra(ExtraKeys.CARD_NUM, "**** **** **** 1234")
             }
+        }
+        Log.d(TAG, "Enviando resultado a HioPos: Action=${result.action}, Result=${result.getStringExtra(ExtraKeys.TRANSACTION_RESULT)}")
+        setResult(Activity.RESULT_OK, result)
+        finish()
+    }
+
+    // Helper para respuestas simples de FAILED
+    private fun sendSimpleResponse(success: Boolean, errorMessage: String, errorTitle: String) {
+        val result = Intent(originalIntentActionForResponse ?: ACTION_TRANSACTION).apply {
+            putExtra(ExtraKeys.TRANSACTION_RESULT, if (success) "ACCEPTED" else "FAILED")
+            if (!success) {
+                putExtra(ExtraKeys.ERROR_MESSAGE, errorMessage)
+                putExtra(ExtraKeys.ERROR_MESSAGE_TITLE, errorTitle)
+            }
+            // Incluir siempre el tipo de transacción, incluso en fallo
+            putExtra(ExtraKeys.TRANSACTION_TYPE, currentTransactionType ?: "UNKNOWN")
+            putExtra(ExtraKeys.AMOUNT, currentAmount ?: "0")
         }
         setResult(Activity.RESULT_OK, result)
         finish()
@@ -211,6 +254,45 @@ class PaymentActivity : AppCompatActivity() {
         return amountStr.toIntOrNull()?.let { cents ->
             String.format("%d.%02d", cents / 100, cents % 100)
         } ?: "0.00"
+    }
+
+    private fun formatAmountForDisplay(amountInCentsStr: String?): String {
+        return amountInCentsStr?.toIntOrNull()?.let { cents ->
+            String.format("$%d.%02d", cents / 100, cents % 100)
+        } ?: "$0.00"
+    }
+
+    private fun showFinalRefundConfirmationDialog() {
+        val dialog = RefundFinalConfirmationDialog.newInstance(formatAmountForDisplay(currentAmount))
+        dialog.setRefundConfirmationListener(object : RefundFinalConfirmationDialog.RefundConfirmationListener {
+            override fun onRefundConfirmed(detail: String) {
+                Log.d(TAG, "Devolución confirmada con detalle: $detail")
+                val resultData = Intent(originalIntentActionForResponse)
+                resultData.putExtra(ExtraKeys.TRANSACTION_RESULT, "ACCEPTED")
+                resultData.putExtra(ExtraKeys.TRANSACTION_TYPE, "REFUND")
+                resultData.putExtra(ExtraKeys.AMOUNT, currentAmount) // Monto original en centavos
+                resultData.putExtra(ExtraKeys.AUTHORIZATION_ID, "MANUAL_REFUND_${System.currentTimeMillis()}")
+
+                // Según documentación (p.19), TransactionData es un String de hasta 250 caracteres.
+                // Usaremos este campo para el detalle.
+                val transactionDataDetail = "Devolucion Manual: ${detail.take(200)}" // Truncar para asegurar límite
+                resultData.putExtra(ExtraKeys.TRANSACTION_DATA_MODULE, transactionDataDetail)
+
+                // Considera si necesitas devolver otros campos como CardHolder, CardType, CardNum (probablemente vacíos o "MANUAL")
+                resultData.putExtra(ExtraKeys.CARD_HOLDER, "DEVOLUCIÓN MANUAL")
+                resultData.putExtra(ExtraKeys.CARD_TYPE, "MANUAL")
+                resultData.putExtra(ExtraKeys.CARD_NUM, "N/A")
+
+                setResult(Activity.RESULT_OK, resultData)
+                finish()
+            }
+
+            override fun onRefundConfirmationCancelled() {
+                Log.d(TAG, "Confirmación de devolución cancelada por el usuario")
+                sendSimpleResponse(false, "Confirmación de devolución cancelada", "Devolución Cancelada")
+            }
+        })
+        dialog.show(supportFragmentManager, "RefundFinalConfirmationDialog")
     }
 
     private var qrDialog: QrCodeDialog? = null

@@ -29,7 +29,8 @@
         <activity
             android:name=".PaymentActivity"
             android:exported="true"
-            android:launchMode="singleTop">
+            android:launchMode="singleTop"
+            android:theme="@style/Theme.PaymentActivity.NoActionBar">
             <!--
                 Filtro para la acción INITIALIZE:
                 Esta acción es llamada por HioPosCloud al arrancar para que el módulo

@@ -13,4 +13,25 @@
         <item name="android:statusBarColor">?attr/colorPrimaryVariant</item>
         <!-- Customize your theme here. -->
     </style>
+
+    <!-- Theme for PaymentActivity without ActionBar -->
+    <style name="Theme.PaymentActivity.NoActionBar" parent="Theme.MaterialComponents.DayNight.NoActionBar">
+        <!-- Primary brand color. -->
+        <item name="colorPrimary">@color/refund_decision_background_dark</item>
+        <item name="colorPrimaryVariant">@color/refund_decision_background_dark</item>
+        <item name="colorOnPrimary">@color/white</item>
+        <!-- Secondary brand color. -->
+        <item name="colorSecondary">@color/refund_decision_button_yes_background</item>
+        <item name="colorSecondaryVariant">@color/refund_decision_button_yes_background</item>
+        <item name="colorOnSecondary">@color/white</item>
+        <!-- Status bar color. -->
+        <item name="android:statusBarColor">@color/refund_decision_background_dark</item>
+        <!-- Make the activity fullscreen -->
+        <item name="android:windowFullscreen">false</item>
+        <item name="android:windowActionBar">false</item>
+        <item name="windowActionBar">false</item>
+        <item name="windowNoTitle">true</item>
+        <!-- Dark background for the activity -->
+        <item name="android:windowBackground">@color/refund_decision_background_dark</item>
+    </style>
 </resources>
